@@ -1,0 +1,16 @@
+http:
+  addr: :8000
+  auth:
+    username: "alertmanager"
+    password: "verysecure"
+ntfy:
+  url: https://ntfy.sh/booyah
+  priority: urgent
+  templates:
+    title: |
+      [{{ index .Labels "instance" }}] {{ index .Labels "alertname" }}
+    description: |
+      {{ index .Annotations "description" }}
+  auth:
+    username: "admin"
+    password: "verysecure"
