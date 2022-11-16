@@ -2,8 +2,6 @@ package config
 
 import (
 	"fmt"
-	"net/url"
-	urlpkg "net/url"
 	"strings"
 	"text/template"
 	"time"
@@ -39,16 +37,16 @@ type BasicAuth struct {
 	Password string `yaml:"password"`
 }
 
-type Priority struct {
+type StringExpression struct {
 	Text       string
 	Expression *Expression
 }
 
 type Notification struct {
-	Topic     string     `yaml:"topic"`
-	Priority  *Priority  `yaml:"priority"`
-	Tags      []*Tag     `yaml:"tags"`
-	Templates *Templates `yaml:"templates"`
+	Topic     StringExpression  `yaml:"topic"`
+	Priority  *StringExpression `yaml:"priority"`
+	Tags      []*Tag            `yaml:"tags"`
+	Templates *Templates        `yaml:"templates"`
 }
 
 type Ntfy struct {
@@ -67,20 +65,6 @@ type Config struct {
 	HTTP *HTTP       `yaml:"http"`
 	Ntfy *Ntfy       `yaml:"ntfy"`
 	Log  *zap.Config `yaml:"log"`
-}
-
-func (c *Ntfy) URL() (*url.URL, error) {
-	url, err := urlpkg.Parse(c.BaseURL)
-	if err != nil {
-		return nil, err
-	}
-
-	url.Path, err = urlpkg.JoinPath(url.Path, c.Notification.Topic)
-	if err != nil {
-		return nil, fmt.Errorf("url path join: %w", err)
-	}
-
-	return url, nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
@@ -112,9 +96,9 @@ func (e *Expression) UnmarshalText(text []byte) error {
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (p *Priority) UnmarshalText(text []byte) error {
+func (e *StringExpression) UnmarshalText(text []byte) error {
 	s := strings.TrimSpace(string(text))
-	prio := Priority{Text: s}
+	se := StringExpression{Text: s}
 
 	if !isAlphaNumeric(s) {
 		var expr Expression
@@ -122,10 +106,10 @@ func (p *Priority) UnmarshalText(text []byte) error {
 			return err
 		}
 
-		prio.Expression = &expr
+		se.Expression = &expr
 	}
 
-	*p = prio
+	*e = se
 	return nil
 }
 

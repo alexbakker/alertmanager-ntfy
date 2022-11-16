@@ -9,12 +9,14 @@ ntfy:
     username: "admin"
     password: "verysecure"
   notification:
+    # The topic can either be a hardcoded string or a gval expression that evaluates to a string
     topic: alertmanager
     # Priority reference: https://docs.ntfy.sh/publish/#message-priority
     # Can either be a hardcoded string or a gval expression that evaluates to a string
     priority: |
       status == "firing" ? "urgent" : "default"
     tags:
+      # Tags with no condition are always included
       # Emoji shortcode reference: https://docs.ntfy.sh/emojis/
       - tag: "+1"
         condition: status == "resolved"

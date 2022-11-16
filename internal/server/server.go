@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	urlpkg "net/url"
 	"strings"
 	"text/template"
 
@@ -125,7 +127,7 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		title = ""
 	}
 
-	url, err := s.cfg.Ntfy.URL()
+	url, err := s.getUrl(alert)
 	if err != nil {
 		return err
 	}
@@ -169,22 +171,16 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		req.Header.Set("X-Tags", strings.Join(tags, tagSeparator))
 	}
 	if s.cfg.Ntfy.Notification.Priority != nil {
-		var priority string
-		if expr := s.cfg.Ntfy.Notification.Priority.Expression; expr != nil {
-			priority, err = expr.Evaluable.EvalString(context.Background(), alert.Map())
-			if err != nil {
-				// Expression evaluation errors should not prevent the notification from being sent
-				logger.Warn(
-					"Priority expression evaluation failed",
-					zap.String("expression", expr.Text),
-					zap.Error(err),
-				)
-			}
-		} else {
-			priority = s.cfg.Ntfy.Notification.Priority.Text
+		priority, err := evalStringExpr(s.cfg.Ntfy.Notification.Priority, alert)
+		if err != nil {
+			// Expression evaluation errors should not prevent the notification from being sent
+			logger.Warn(
+				"Priority expression evaluation failed",
+				zap.String("expression", s.cfg.Ntfy.Notification.Priority.Expression.Text),
+				zap.Error(err),
+			)
 		}
 
-		fmt.Println(priority)
 		if priority != "" {
 			req.Header.Set("X-Priority", priority)
 		}
@@ -205,4 +201,35 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 
 func (s *Server) Run(addr string) error {
 	return s.e.Run(addr)
+}
+
+func (s *Server) getUrl(alert *alertmanager.Alert) (*urlpkg.URL, error) {
+	url, err := urlpkg.Parse(s.cfg.Ntfy.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	topic, err := evalStringExpr(&s.cfg.Ntfy.Notification.Topic, alert)
+	if err != nil {
+		return nil, fmt.Errorf("topic expression eval: %w", err)
+	}
+
+	if topic == "" {
+		return nil, errors.New("topic is empty")
+	}
+
+	url.Path, err = urlpkg.JoinPath(url.Path, topic)
+	if err != nil {
+		return nil, fmt.Errorf("url path join: %w", err)
+	}
+
+	return url, nil
+}
+
+func evalStringExpr(expr *config.StringExpression, alert *alertmanager.Alert) (string, error) {
+	if expr.Expression != nil {
+		return expr.Expression.Evaluable.EvalString(context.Background(), alert.Map())
+	}
+
+	return expr.Text, nil
 }
