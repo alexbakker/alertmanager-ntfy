@@ -81,7 +81,6 @@ func main() {
 	if err := k.UnmarshalWithConf("", &cfg, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
 		exitWithError(fmt.Sprintf("Failed to parse config file: %v", err))
 	}
-	k.Print()
 
 	logger, err := newLogger(cfg.Log)
 	if err != nil {
