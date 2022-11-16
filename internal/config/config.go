@@ -8,14 +8,25 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/PaesslerAG/gval"
 	"go.uber.org/zap"
 )
 
 type Template template.Template
 
+type Expression struct {
+	Text      string
+	Evaluable gval.Evaluable
+}
+
 type Templates struct {
 	Title       *Template `yaml:"title"`
 	Description *Template `yaml:"description"`
+}
+
+type Tag struct {
+	Tag       string      `yaml:"tag"`
+	Condition *Expression `yaml:"condition"`
 }
 
 type BasicAuth struct {
@@ -29,6 +40,7 @@ type Ntfy struct {
 	Timeout   time.Duration `yaml:"timeout"`
 	Auth      *BasicAuth    `yaml:"auth"`
 	Priority  string        `yaml:"priority"`
+	Tags      []*Tag        `yaml:"tags"`
 	Templates *Templates    `yaml:"templates"`
 }
 
@@ -67,6 +79,20 @@ func (t *Template) UnmarshalText(text []byte) error {
 	}
 
 	*t = Template(*tmpl)
+	return nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (e *Expression) UnmarshalText(text []byte) error {
+	evaluable, err := exprLang.NewEvaluable(string(text))
+	if err != nil {
+		return fmt.Errorf("bad expression: %w", err)
+	}
+
+	*e = Expression{
+		Text:      string(text),
+		Evaluable: evaluable,
+	}
 	return nil
 }
 

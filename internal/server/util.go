@@ -7,17 +7,19 @@ import (
 	"strings"
 )
 
-func convertLabelsToTags(labels map[string]string) string {
-	const sep = ","
+const (
+	tagSeparator = ","
+)
 
+func convertLabelsToTags(labels map[string]string) []string {
 	var tags []string
 	for key, value := range labels {
-		if !strings.Contains(key, sep) && !strings.Contains(value, sep) {
+		if !strings.Contains(key, tagSeparator) && !strings.Contains(value, tagSeparator) {
 			tags = append(tags, fmt.Sprintf("%s = %s", key, value))
 		}
 	}
 
-	return strings.Join(tags, sep)
+	return tags
 }
 
 // generateRequestID generates a random 32 character long request ID for use

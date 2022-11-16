@@ -1,6 +1,10 @@
 package alertmanager
 
-import "time"
+import (
+	"time"
+
+	"github.com/fatih/structs"
+)
 
 // Source: https://github.com/prometheus/alertmanager/blob/ba8da18fb2b769ace00d270d677980c4d57310e7/template/template.go
 
@@ -24,4 +28,10 @@ type Alert struct {
 	EndsAt       time.Time         `json:"endsAt"`
 	GeneratorURL string            `json:"generatorURL"`
 	Fingerprint  string            `json:"fingerprint"`
+}
+
+func (a *Alert) Map() map[string]interface{} {
+	s := structs.New(a)
+	s.TagName = "json"
+	return s.Map()
 }

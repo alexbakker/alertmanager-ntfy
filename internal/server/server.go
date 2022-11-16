@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -138,10 +139,35 @@ func (s *Server) forwardAlert(alert *alertmanager.Alert) error {
 		req.SetBasicAuth(s.cfg.Ntfy.Auth.Username, s.cfg.Ntfy.Auth.Password)
 	}
 
+	var tags []string
+	for _, tag := range s.cfg.Ntfy.Tags {
+		if tag.Condition != nil {
+			match, err := tag.Condition.Evaluable.EvalBool(context.Background(), alert.Map())
+			if err != nil {
+				// Expression evaluation errors should not prevent the notification from being sent
+				s.logger.Warn(
+					"Expression evaluation failed",
+					zap.String("expression", tag.Condition.Text),
+					zap.Error(err),
+				)
+				continue
+			}
+
+			if !match {
+				continue
+			}
+		}
+
+		tags = append(tags, tag.Tag)
+	}
+	tags = append(tags, convertLabelsToTags(alert.Labels)...)
+
 	if title != "" {
 		req.Header.Set("X-Title", title)
 	}
-	req.Header.Set("X-Tags", convertLabelsToTags(alert.Labels))
+	if len(tags) > 0 {
+		req.Header.Set("X-Tags", strings.Join(tags, tagSeparator))
+	}
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {

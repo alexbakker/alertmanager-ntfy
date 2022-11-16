@@ -6,9 +6,15 @@ http:
 ntfy:
   url: https://ntfy.sh/booyah
   priority: urgent
+  # List of emoji shortcodes: https://docs.ntfy.sh/emojis/
+  tags:
+    - tag: "+1"
+      condition: status == "resolved"
+    - tag: rotating_light
+      condition: status == "firing"
   templates:
     title: |
-      [{{ index .Labels "instance" }}] {{ index .Labels "alertname" }}
+      {{if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
     description: |
       {{ index .Annotations "description" }}
   auth:
