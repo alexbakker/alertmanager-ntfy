@@ -24,6 +24,6 @@ ntfy:
         condition: status == "firing"
     templates:
       title: |
-        {{if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
+        {{ if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
       description: |
         {{ index .Annotations "description" }}

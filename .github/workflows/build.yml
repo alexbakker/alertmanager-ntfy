@@ -12,3 +12,6 @@ jobs:
       - name: Build
         run: |
           nix build --print-build-logs
+      - name: Check
+        run: |
+          nix flake check
