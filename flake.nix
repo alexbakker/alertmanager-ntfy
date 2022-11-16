@@ -15,7 +15,7 @@
             name = "alertmanager-ntfy";
             src = self;
 
-            vendorSha256 = "sha256-YyyCwf8d49ah84QQJB9v7KS+9nY/0GrjsiGpK2w2AC8=";
+            vendorSha256 = "sha256-wQXS+QCkR6AIli6Dzv2fYlQiweHUVJWjqLQulIlddRQ=";
           };
         devShell = with pkgs; mkShell {
           buildInputs = [
