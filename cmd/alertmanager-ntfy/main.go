@@ -96,7 +96,7 @@ func main() {
 }
 
 func exitWithError(msg string) {
-	fmt.Println(msg)
+	fmt.Fprintln(os.Stderr, msg)
 	os.Exit(1)
 }
 
