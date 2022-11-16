@@ -5,9 +5,12 @@ http:
     password: "verysecure"
 ntfy:
   url: https://ntfy.sh/booyah
-  priority: urgent
-  # List of emoji shortcodes: https://docs.ntfy.sh/emojis/
+  # Message priority reference: https://docs.ntfy.sh/publish/#message-priority
+  # Can either be a hardcoded string or a gval expression that evaluates to a string
+  priority: |
+    status == "firing" ? "urgent" : "default"
   tags:
+    # Emoji shortcode reference: https://docs.ntfy.sh/emojis/
     - tag: "+1"
       condition: status == "resolved"
     - tag: rotating_light

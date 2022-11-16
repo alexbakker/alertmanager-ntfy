@@ -97,7 +97,7 @@ func (s *Server) handleWebhook(c *gin.Context) {
 func (s *Server) forwardAlerts(logger *zap.Logger, alerts []*alertmanager.Alert) {
 	for _, alert := range alerts {
 		logger := logger.With(zap.String("alert_fingerprint", alert.Fingerprint))
-		if err := s.forwardAlert(alert); err != nil {
+		if err := s.forwardAlert(logger, alert); err != nil {
 			logger.Error("Failed to forward alert to ntfy", zap.Error(err))
 		} else {
 			logger.Info("Successfully forwarded alert to ntfy")
@@ -105,7 +105,7 @@ func (s *Server) forwardAlerts(logger *zap.Logger, alerts []*alertmanager.Alert)
 	}
 }
 
-func (s *Server) forwardAlert(alert *alertmanager.Alert) error {
+func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) error {
 	var titleBuf bytes.Buffer
 	if err := (*template.Template)(s.cfg.Ntfy.Templates.Title).Execute(&titleBuf, alert); err != nil {
 		return fmt.Errorf("render title template: %w", err)
@@ -145,8 +145,8 @@ func (s *Server) forwardAlert(alert *alertmanager.Alert) error {
 			match, err := tag.Condition.Evaluable.EvalBool(context.Background(), alert.Map())
 			if err != nil {
 				// Expression evaluation errors should not prevent the notification from being sent
-				s.logger.Warn(
-					"Expression evaluation failed",
+				logger.Warn(
+					"Tag condition expression evaluation failed",
 					zap.String("expression", tag.Condition.Text),
 					zap.Error(err),
 				)
@@ -167,6 +167,27 @@ func (s *Server) forwardAlert(alert *alertmanager.Alert) error {
 	}
 	if len(tags) > 0 {
 		req.Header.Set("X-Tags", strings.Join(tags, tagSeparator))
+	}
+	if s.cfg.Ntfy.Priority != nil {
+		var priority string
+		if expr := s.cfg.Ntfy.Priority.Expression; expr != nil {
+			priority, err = expr.Evaluable.EvalString(context.Background(), alert.Map())
+			if err != nil {
+				// Expression evaluation errors should not prevent the notification from being sent
+				logger.Warn(
+					"Priority expression evaluation failed",
+					zap.String("expression", expr.Text),
+					zap.Error(err),
+				)
+			}
+		} else {
+			priority = s.cfg.Ntfy.Priority.Text
+		}
+
+		fmt.Println(priority)
+		if priority != "" {
+			req.Header.Set("X-Priority", priority)
+		}
 	}
 
 	res, err := http.DefaultClient.Do(req)

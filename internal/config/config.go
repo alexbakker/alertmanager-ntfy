@@ -7,9 +7,14 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"unicode"
 
 	"github.com/PaesslerAG/gval"
 	"go.uber.org/zap"
+)
+
+var (
+	exprLang = gval.Full()
 )
 
 type Template template.Template
@@ -34,12 +39,17 @@ type BasicAuth struct {
 	Password string `yaml:"password"`
 }
 
+type Priority struct {
+	Text       string
+	Expression *Expression
+}
+
 type Ntfy struct {
 	BaseURL   string        `yaml:"baseurl"`
 	Topic     string        `yaml:"topic"`
 	Timeout   time.Duration `yaml:"timeout"`
 	Auth      *BasicAuth    `yaml:"auth"`
-	Priority  string        `yaml:"priority"`
+	Priority  *Priority     `yaml:"priority"`
 	Tags      []*Tag        `yaml:"tags"`
 	Templates *Templates    `yaml:"templates"`
 }
@@ -84,15 +94,34 @@ func (t *Template) UnmarshalText(text []byte) error {
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *Expression) UnmarshalText(text []byte) error {
-	evaluable, err := exprLang.NewEvaluable(string(text))
+	s := strings.TrimSpace(string(text))
+	evaluable, err := exprLang.NewEvaluable(s)
 	if err != nil {
 		return fmt.Errorf("bad expression: %w", err)
 	}
 
 	*e = Expression{
-		Text:      string(text),
+		Text:      s,
 		Evaluable: evaluable,
 	}
+	return nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (p *Priority) UnmarshalText(text []byte) error {
+	s := strings.TrimSpace(string(text))
+	prio := Priority{Text: s}
+
+	if !isAlphaNumeric(s) {
+		var expr Expression
+		if err := expr.UnmarshalText(text); err != nil {
+			return err
+		}
+
+		prio.Expression = &expr
+	}
+
+	*p = prio
 	return nil
 }
 
@@ -100,4 +129,14 @@ func (e *Expression) UnmarshalText(text []byte) error {
 // valid. Returns false if it is nil, or if the username or password is empty.
 func (a *BasicAuth) Valid() bool {
 	return a != nil && a.Username != "" && a.Password != ""
+}
+
+func isAlphaNumeric(s string) bool {
+	for _, c := range s {
+		if !unicode.IsLetter(c) && !unicode.IsDigit(c) {
+			return false
+		}
+	}
+
+	return true
 }
