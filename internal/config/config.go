@@ -44,14 +44,18 @@ type Priority struct {
 	Expression *Expression
 }
 
+type Notification struct {
+	Topic     string     `yaml:"topic"`
+	Priority  *Priority  `yaml:"priority"`
+	Tags      []*Tag     `yaml:"tags"`
+	Templates *Templates `yaml:"templates"`
+}
+
 type Ntfy struct {
-	BaseURL   string        `yaml:"baseurl"`
-	Topic     string        `yaml:"topic"`
-	Timeout   time.Duration `yaml:"timeout"`
-	Auth      *BasicAuth    `yaml:"auth"`
-	Priority  *Priority     `yaml:"priority"`
-	Tags      []*Tag        `yaml:"tags"`
-	Templates *Templates    `yaml:"templates"`
+	BaseURL      string        `yaml:"baseurl"`
+	Timeout      time.Duration `yaml:"timeout"`
+	Auth         *BasicAuth    `yaml:"auth"`
+	Notification Notification  `yaml:"notification"`
 }
 
 type HTTP struct {
@@ -71,7 +75,7 @@ func (c *Ntfy) URL() (*url.URL, error) {
 		return nil, err
 	}
 
-	url.Path, err = urlpkg.JoinPath(url.Path, c.Topic)
+	url.Path, err = urlpkg.JoinPath(url.Path, c.Notification.Topic)
 	if err != nil {
 		return nil, fmt.Errorf("url path join: %w", err)
 	}

@@ -29,10 +29,12 @@ var (
 			Addr: ":8000",
 		},
 		Ntfy: &config.Ntfy{
-			BaseURL:  "https://ntfy.sh",
-			Timeout:  10 * time.Second,
-			Topic:    getDefaultTopic(),
-			Priority: &config.Priority{Text: "normal"},
+			BaseURL: "https://ntfy.sh",
+			Timeout: 10 * time.Second,
+			Notification: config.Notification{
+				Topic:    getDefaultTopic(),
+				Priority: &config.Priority{Text: "default"},
+			},
 		},
 		Log: getDefaultLogConfig(zapcore.InfoLevel),
 	}
@@ -52,8 +54,8 @@ func main() {
 	f.String("log-level", defaultConfig.Log.Level.String(), "the log level to use")
 	f.String("http-addr", defaultConfig.HTTP.Addr, "the address to have the HTTP server listen on")
 	f.String("ntfy-baseurl", defaultConfig.Ntfy.BaseURL, "the ntfy url to forward alerts to")
-	f.String("ntfy-topic", defaultConfig.Ntfy.Topic, "the ntfy topic")
-	f.String("ntfy-priority", defaultConfig.Ntfy.Priority.Text, "the ntfy priority")
+	f.String("ntfy-topic", defaultConfig.Ntfy.Notification.Topic, "the ntfy topic")
+	f.String("ntfy-priority", defaultConfig.Ntfy.Notification.Priority.Text, "the ntfy priority")
 	f.Duration("ntfy-timeout", defaultConfig.Ntfy.Timeout, "the ntfy request timeout")
 	if err := f.Parse(os.Args[1:]); err != nil {
 		exitWithError(err.Error())

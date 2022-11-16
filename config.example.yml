@@ -4,22 +4,24 @@ http:
     username: "alertmanager"
     password: "verysecure"
 ntfy:
-  url: https://ntfy.sh/booyah
-  # Message priority reference: https://docs.ntfy.sh/publish/#message-priority
-  # Can either be a hardcoded string or a gval expression that evaluates to a string
-  priority: |
-    status == "firing" ? "urgent" : "default"
-  tags:
-    # Emoji shortcode reference: https://docs.ntfy.sh/emojis/
-    - tag: "+1"
-      condition: status == "resolved"
-    - tag: rotating_light
-      condition: status == "firing"
-  templates:
-    title: |
-      {{if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
-    description: |
-      {{ index .Annotations "description" }}
+  baseurl: https://ntfy.sh
   auth:
     username: "admin"
     password: "verysecure"
+  notification:
+    topic: alertmanager
+    # Priority reference: https://docs.ntfy.sh/publish/#message-priority
+    # Can either be a hardcoded string or a gval expression that evaluates to a string
+    priority: |
+      status == "firing" ? "urgent" : "default"
+    tags:
+      # Emoji shortcode reference: https://docs.ntfy.sh/emojis/
+      - tag: "+1"
+        condition: status == "resolved"
+      - tag: rotating_light
+        condition: status == "firing"
+    templates:
+      title: |
+        {{if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
+      description: |
+        {{ index .Annotations "description" }}

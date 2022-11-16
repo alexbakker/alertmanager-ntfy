@@ -107,13 +107,13 @@ func (s *Server) forwardAlerts(logger *zap.Logger, alerts []*alertmanager.Alert)
 
 func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) error {
 	var titleBuf bytes.Buffer
-	if err := (*template.Template)(s.cfg.Ntfy.Templates.Title).Execute(&titleBuf, alert); err != nil {
+	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Title).Execute(&titleBuf, alert); err != nil {
 		return fmt.Errorf("render title template: %w", err)
 	}
 	title := strings.TrimSpace(titleBuf.String())
 
 	var descBuf bytes.Buffer
-	if err := (*template.Template)(s.cfg.Ntfy.Templates.Description).Execute(&descBuf, alert); err != nil {
+	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Description).Execute(&descBuf, alert); err != nil {
 		return fmt.Errorf("render description template: %w", err)
 	}
 	description := strings.TrimSpace(descBuf.String())
@@ -140,7 +140,7 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 	}
 
 	var tags []string
-	for _, tag := range s.cfg.Ntfy.Tags {
+	for _, tag := range s.cfg.Ntfy.Notification.Tags {
 		if tag.Condition != nil {
 			match, err := tag.Condition.Evaluable.EvalBool(context.Background(), alert.Map())
 			if err != nil {
@@ -168,9 +168,9 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 	if len(tags) > 0 {
 		req.Header.Set("X-Tags", strings.Join(tags, tagSeparator))
 	}
-	if s.cfg.Ntfy.Priority != nil {
+	if s.cfg.Ntfy.Notification.Priority != nil {
 		var priority string
-		if expr := s.cfg.Ntfy.Priority.Expression; expr != nil {
+		if expr := s.cfg.Ntfy.Notification.Priority.Expression; expr != nil {
 			priority, err = expr.Evaluable.EvalString(context.Background(), alert.Map())
 			if err != nil {
 				// Expression evaluation errors should not prevent the notification from being sent
@@ -181,7 +181,7 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 				)
 			}
 		} else {
-			priority = s.cfg.Ntfy.Priority.Text
+			priority = s.cfg.Ntfy.Notification.Priority.Text
 		}
 
 		fmt.Println(priority)
