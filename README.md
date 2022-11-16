@@ -3,3 +3,5 @@
 __alertmanager-ntfy__ is a service that forwards [Prometheus
 Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)
 notifications to [ntfy.sh](https://ntfy.sh/).
+
+<img width="400" src="screenshots/notifications.png"/>
