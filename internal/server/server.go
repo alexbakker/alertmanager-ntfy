@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"text/template"
 
 	"github.com/alexbakker/alertmanager-ntfy/internal/alertmanager"
@@ -108,10 +109,19 @@ func (s *Server) forwardAlert(alert *alertmanager.Alert) error {
 	if err := (*template.Template)(s.cfg.Ntfy.Templates.Title).Execute(&titleBuf, alert); err != nil {
 		return fmt.Errorf("render title template: %w", err)
 	}
+	title := strings.TrimSpace(titleBuf.String())
 
 	var descBuf bytes.Buffer
 	if err := (*template.Template)(s.cfg.Ntfy.Templates.Description).Execute(&descBuf, alert); err != nil {
 		return fmt.Errorf("render description template: %w", err)
+	}
+	description := strings.TrimSpace(descBuf.String())
+
+	// If the description is empty, send the title as the description so that
+	// the ntfy app doesn't fall back to setting "triggered" as the description.
+	if description == "" {
+		description = title
+		title = ""
 	}
 
 	url, err := s.cfg.Ntfy.URL()
@@ -119,7 +129,7 @@ func (s *Server) forwardAlert(alert *alertmanager.Alert) error {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", url.String(), &descBuf)
+	req, err := http.NewRequest("POST", url.String(), strings.NewReader(description))
 	if err != nil {
 		return fmt.Errorf("http request: %w", err)
 	}
@@ -128,7 +138,6 @@ func (s *Server) forwardAlert(alert *alertmanager.Alert) error {
 		req.SetBasicAuth(s.cfg.Ntfy.Auth.Username, s.cfg.Ntfy.Auth.Password)
 	}
 
-	title := titleBuf.String()
 	if title != "" {
 		req.Header.Set("X-Title", title)
 	}
