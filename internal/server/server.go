@@ -186,7 +186,7 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		}
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := s.http.Do(req)
 	if err != nil {
 		return fmt.Errorf("http request: %w", err)
 	}
