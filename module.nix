@@ -16,7 +16,7 @@ in {
       '';
     };
     extraSettingsPath = mkOption {
-      type = types.nullOr types.path;
+      type = types.nullOr types.str;
       default = null;
       description = ''
         Extra configuration file (YAML) to load and merge into the config generated from the settings defined by the NixOS module.

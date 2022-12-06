@@ -154,7 +154,7 @@ To replicate the configuration example above:
         };
       };
     };
-    extraSettingsPath = /path/to/your/auth.yml;
+    extraSettingsPath = "/path/to/your/auth.yml";
   };
 }
 ```
