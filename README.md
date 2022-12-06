@@ -6,11 +6,13 @@ notifications to [ntfy.sh](https://ntfy.sh/). It is highly customizable,
 allowing you to dynamically configure the ntfy notification based on the
 properties of the alert that is being handled.
 
+Example of receiving a [Blackbox
+exporter](https://github.com/prometheus/blackbox_exporter) notifcation on an
+Android device:
+
 <img width="400" src="screenshots/notifications.png"/>
 
 ## Configuration
-
-TODO: Finish this.
 
 The primary way to configure the service is through a YAML configuration file.
 An example configuration is shown below.
@@ -22,8 +24,10 @@ notification properties based on the alert that the service is currently
 handling. For example, if an alert is resolved, you may want to show a different
 icon than when an alert is currently firing.
 
-The title and description can be customized using [Go's templating
-engine](https://pkg.go.dev/text/template).
+The title and description of the notification can be customized using [Go's
+templating engine](https://pkg.go.dev/text/template). Refer to the definition of
+the ``Alert`` struct in [format.go](internal/alertmanager/format.go) for the
+data structure that is passed to the templates.
 
 ```yaml
 http:
@@ -60,7 +64,34 @@ ntfy:
 There are a couple of command line options as well that can be used to override
 settings in the config file.
 
-### Alertmanager
+### Multiple configuration files
+
+It is possible to split the configuration into multiple files. This allows you
+to to keep a separate encrypted file for all of the sensitive credential
+settings, while keeping the main configuration file in plain text. Simply pass a
+comma-separated list of filenames:
+
+```
+alertmanager-ntfy --configs config.yml,auth.yml
+```
+
+The configuration files will be merged automatically in-memory on startup of the
+service.
+
+Example of a separate auth.yaml file:
+
+```yaml
+http:
+  auth:
+    username: "alertmanager"
+    password: "verysecure"
+ntfy:
+  auth:
+    username: "admin"
+    password: "verysecure"
+```
+
+## Alertmanager
 
 Assuming you've already set up Alertmanager for your Prometheus deployment,
 configuring it to send notifications to __alertmanager-ntfy__ is fairly
@@ -79,7 +110,7 @@ webhook_configs:
 Replace the URL and username/password with values appropriate for your
 environment.
 
-For a full overview of the available configuration options, please refer to the
+For a full overview of the available configuration options, refer to the
 [Prometheus Alertmanager
 documentation](https://prometheus.io/docs/alerting/latest/configuration).
 
