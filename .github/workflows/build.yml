@@ -4,11 +4,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Install Nix
-        uses: cachix/install-nix-action@daddc62a2e67d1decb56e028c9fa68344b9b7c2a
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@de22e16c4711fca50c816cc9081563429d1cf563
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
+          diagnostic-endpoint:
       - name: Build
         run: |
           nix build --print-build-logs
