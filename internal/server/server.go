@@ -137,8 +137,12 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		return fmt.Errorf("http request: %w", err)
 	}
 
-	if s.cfg.Ntfy.Auth.Valid() {
-		req.SetBasicAuth(s.cfg.Ntfy.Auth.Username, s.cfg.Ntfy.Auth.Password)
+	if s.cfg.Ntfy.Auth != nil {
+		if s.cfg.Ntfy.Auth.BasicAuth.Valid() {
+			req.SetBasicAuth(s.cfg.Ntfy.Auth.BasicAuth.Username, s.cfg.Ntfy.Auth.BasicAuth.Password)
+		} else if s.cfg.Ntfy.Auth.Token != nil && *s.cfg.Ntfy.Auth.Token != "" {
+			req.Header.Add("Authorization", "Bearer "+*s.cfg.Ntfy.Auth.Token)
+		}
 	}
 
 	var tags []string

@@ -49,10 +49,15 @@ type Notification struct {
 	Templates *Templates        `yaml:"templates"`
 }
 
+type NtfyAuth struct {
+	BasicAuth *BasicAuth `yaml:"basic"`
+	Token     *string    `yaml:"token"`
+}
+
 type Ntfy struct {
 	BaseURL      string        `yaml:"baseurl"`
 	Timeout      time.Duration `yaml:"timeout"`
-	Auth         *BasicAuth    `yaml:"auth"`
+	Auth         *NtfyAuth     `yaml:"auth"`
 	Notification Notification  `yaml:"notification"`
 }
 
