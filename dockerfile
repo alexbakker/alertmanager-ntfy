@@ -38,5 +38,5 @@ ENV CONFIG_FILES="/config/config.yml"
 # Switch to non-root user
 USER appuser:appuser
 
-# Use exec form of ENTRYPOINT with environment variable expansion
-ENTRYPOINT ["/app/alertmanager-ntfy", "--configs", "${CONFIG_FILES}"]
+# Use shell form to allow environment variable expansion
+ENTRYPOINT /app/alertmanager-ntfy --configs $CONFIG_FILES
