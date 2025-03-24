@@ -29,8 +29,8 @@ RUN mkdir -p /config && \
     chown -R appuser:appuser /app && \
     chown -R appuser:appuser /config
 
-# Expose port 8111
-EXPOSE 8111
+# Expose port 8000
+EXPOSE 8000
 
 # Set default config path - can be overridden
 ENV CONFIG_FILES="/config/config.yml"
