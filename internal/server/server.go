@@ -21,6 +21,7 @@ import (
 
 const (
 	keyRequestID = "request_id"
+	pathHealth   = "/"
 )
 
 type Server struct {
@@ -28,6 +29,14 @@ type Server struct {
 	cfg    *config.Config
 	logger *zap.Logger
 	http   *http.Client
+}
+
+// HealthCheck handles health check requests
+func HealthCheck(logger *zap.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		logger.Debug("Health check request received")
+		c.String(http.StatusOK, "ok")
+	}
 }
 
 func New(logger *zap.Logger, cfg *config.Config) *Server {
@@ -52,8 +61,28 @@ func New(logger *zap.Logger, cfg *config.Config) *Server {
 			}
 			return []zapcore.Field{zap.String(keyRequestID, requestID.(string))}
 		}),
+		// Skip logging for health checks
+		SkipPaths: []string{pathHealth},
 	}))
 	e.Use(ginzap.RecoveryWithZap(logger, true))
+
+	s := Server{
+		e:      e,
+		cfg:    cfg,
+		logger: logger,
+		http:   &http.Client{Timeout: cfg.Ntfy.Timeout},
+	}
+
+	// Add health check endpoint (no auth required)
+	e.GET(pathHealth, HealthCheck(logger))
+
+	// Use a middleware that does not require auth for healthcheck
+	e.Use(func(c *gin.Context) {
+		if c.Request.URL.Path == pathHealth {
+			c.Next()
+			return
+		}
+	})
 
 	if cfg.HTTP.Auth.Valid() {
 		e.Use(gin.BasicAuth(gin.Accounts{
@@ -63,12 +92,6 @@ func New(logger *zap.Logger, cfg *config.Config) *Server {
 		logger.Warn("Basic auth is disabled")
 	}
 
-	s := Server{
-		e:      e,
-		cfg:    cfg,
-		logger: logger,
-		http:   &http.Client{Timeout: cfg.Ntfy.Timeout},
-	}
 	s.e.POST("/hook", s.handleWebhook)
 	return &s
 }
