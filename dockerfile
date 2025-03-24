@@ -5,7 +5,18 @@ ENV USER_ID=1000
 ENV GROUP_ID=1000
 
 WORKDIR /app
-COPY cmd/alertmanager-ntfy/alertmanager-ntfy .
+# Build stage
+FROM golang:alpine AS builder
+
+WORKDIR /build
+COPY . .
+RUN go build -o alertmanager-ntfy ./cmd/alertmanager-ntfy
+
+# Final stage
+FROM alpine:latest
+
+WORKDIR /app
+COPY --from=builder /build/alertmanager-ntfy .
 
 # Create config directory and set up user
 RUN mkdir -p /config && \

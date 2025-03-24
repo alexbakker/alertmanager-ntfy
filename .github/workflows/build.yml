@@ -18,27 +18,6 @@ jobs:
         run: |
           nix flake check
 
-      # Set up Go with latest stable version
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: 'stable' # This will use the latest stable Go version
-          check-latest: true   # Force checking for new versions
-          cache: true
-
-      # Build Go binary
-      - name: Build Go binary
-        run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -C cmd/alertmanager-ntfy -v -o nvme_exporter
-
-      # Github container registry credentials
-      - name: Log in to the Github Container registry ${{ env.GH_REGISTRY }} as ${{ github.actor }}
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.GH_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       # tags and labels
       - name: Extract metadata (tags, labels) for image ${{ env.FULL_IMAGE_NAME }}
         id: meta
