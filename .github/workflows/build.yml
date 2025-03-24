@@ -18,6 +18,14 @@ jobs:
         run: |
           nix flake check
 
+      # Github container registry credentials
+      - name: Log in to the Github Container registry ${{ env.GH_REGISTRY }} as ${{ github.actor }}
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.GH_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
       # tags and labels
       - name: Extract metadata (tags, labels) for image ${{ env.FULL_IMAGE_NAME }}
         id: meta
