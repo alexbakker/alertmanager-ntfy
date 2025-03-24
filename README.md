@@ -100,7 +100,7 @@ Alertmanager configuration file:
 
 ```yaml
 webhook_configs:
-- url: http://127.0.0.1:8111/hook
+- url: http://127.0.0.1:8000/hook
   http_config:
     basic_auth:
       username: alertmanager

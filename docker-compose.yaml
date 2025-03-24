@@ -6,5 +6,7 @@ services:
     environment:
       - USER_ID=1000
       - GROUP_ID=1000
+      # Defaults to "/config/config.yml". Multiple files can be specified with a comma-separated list.
+      # - CONFIG_FILES="/config/config.yaml,/secret/secret.yaml"
     ports:
       - "8000:8000"
