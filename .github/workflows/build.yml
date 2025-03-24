@@ -1,5 +1,8 @@
 name: build
-on: [pull_request, push]
+on: [push]
+env:
+  GH_REGISTRY: ghcr.io # Github Container Registry
+  FULL_IMAGE_NAME: ${{ github.repository }} # full image name: owner/image
 jobs:
   build:
     runs-on: ubuntu-latest
