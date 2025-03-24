@@ -1,8 +1,8 @@
 FROM alpine:latest
 
-# Add non-root user with configurable UID/GID - set defaults
-ARG USER_ID=1000
-ARG GROUP_ID=1000
+# Add non-root user with configurable UID/GID - defaults are removed from first stage
+ARG USER_ID
+ARG GROUP_ID
 
 WORKDIR /app
 # Build stage
@@ -15,21 +15,17 @@ RUN go build -o alertmanager-ntfy ./cmd/alertmanager-ntfy
 # Final stage
 FROM alpine:latest
 
-# Re-declare build args in final stage
-ARG USER_ID
-ARG GROUP_ID
-
-# Set as environment variables for runtime
-ENV USER_ID=${USER_ID}
-ENV GROUP_ID=${GROUP_ID}
+# Re-declare build args in final stage with defaults
+ARG USER_ID=1000
+ARG GROUP_ID=1000
 
 WORKDIR /app
 COPY --from=builder /build/alertmanager-ntfy .
 
 # Create config directory and set up user
 RUN mkdir -p /config && \
-    addgroup -g ${USER_ID} appuser && \
-    adduser -D -u ${USER_ID} -G appuser -s /sbin/nologin appuser && \
+    addgroup -g "${GROUP_ID}" appuser && \
+    adduser -D -u "${USER_ID}" -G appuser -s /sbin/nologin appuser && \
     chown -R appuser:appuser /app && \
     chown -R appuser:appuser /config
 
