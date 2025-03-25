@@ -214,14 +214,24 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		for _, actionConfig := range s.cfg.Ntfy.Notification.Templates.Actions {
 			// Check condition if present
 			if actionConfig.Condition != nil {
-				match, err := actionConfig.Condition.Evaluable.EvalBool(context.Background(), alert.Map())
+				alertMap := alert.Map()
+				match, err := actionConfig.Condition.Evaluable.EvalBool(context.Background(), alertMap)
 				if err != nil {
+					// Log both warning and detailed debug info
 					logger.Warn("Action condition evaluation failed, skipping action",
 						zap.String("action", actionConfig.Label),
 						zap.Error(err))
+
+					logger.Debug("Action condition evaluation details",
+						zap.String("action", actionConfig.Label),
+						zap.String("condition", actionConfig.Condition.Text),
+						zap.Any("alert_map", alertMap))
 					continue // Skip this action but continue processing others
 				}
 				if !match {
+					logger.Debug("Action condition not met",
+						zap.String("action", actionConfig.Label),
+						zap.String("condition", actionConfig.Condition.Text))
 					continue
 				}
 			}
