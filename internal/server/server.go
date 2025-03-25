@@ -141,7 +141,8 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Description).Execute(&descBuf, alert); err != nil {
 		return fmt.Errorf("render description template: %w", err)
 	}
-	description := strings.TrimSpace(descBuf.String())
+	description := descBuf.String()
+	// description := strings.TrimSpace(descBuf.String())
 
 	// If the description is empty, send the title as the description so that
 	// the ntfy app doesn't fall back to setting "triggered" as the description.
