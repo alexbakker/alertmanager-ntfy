@@ -141,7 +141,8 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Description).Execute(&descBuf, alert); err != nil {
 		return fmt.Errorf("render description template: %w", err)
 	}
-	description := strings.TrimSpace(descBuf.String())
+	description := descBuf.String()
+	// description := strings.TrimSpace(descBuf.String())
 
 	// If the description is empty, send the title as the description so that
 	// the ntfy app doesn't fall back to setting "triggered" as the description.
@@ -200,6 +201,20 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 	if len(tags) > 0 {
 		req.Header.Set("X-Tags", strings.Join(tags, tagSeparator))
 	}
+
+	// Add actions header if configured
+	if s.cfg.Ntfy.Notification.Templates.Actions != nil {
+		var actionsBuf bytes.Buffer
+		if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Actions).Execute(&actionsBuf, alert); err != nil {
+			logger.Warn("Failed to render actions template", zap.Error(err))
+		} else {
+			actions := strings.TrimSpace(actionsBuf.String())
+			if actions != "" {
+				req.Header.Set("X-Actions", actions)
+			}
+		}
+	}
+
 	if s.cfg.Ntfy.Notification.Priority != nil {
 		priority, err := evalStringExpr(s.cfg.Ntfy.Notification.Priority, alert)
 		if err != nil {
