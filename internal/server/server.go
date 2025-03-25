@@ -216,10 +216,10 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 			if actionConfig.Condition != nil {
 				match, err := actionConfig.Condition.Evaluable.EvalBool(context.Background(), alert.Map())
 				if err != nil {
-					logger.Warn("Action condition evaluation failed",
+					logger.Warn("Action condition evaluation failed, skipping action",
 						zap.String("action", actionConfig.Label),
 						zap.Error(err))
-					continue
+					continue // Skip this action but continue processing others
 				}
 				if !match {
 					continue
@@ -230,19 +230,20 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 			var urlBuf bytes.Buffer
 			urlTmpl, err := template.New("url").Parse(actionConfig.URL)
 			if err != nil {
-				logger.Warn("Invalid URL template",
+				logger.Warn("Invalid URL template, skipping action",
 					zap.String("action", actionConfig.Label),
 					zap.Error(err))
-				continue
+				continue // Skip this action but continue processing others
 			}
 
 			if err := urlTmpl.Execute(&urlBuf, alert); err != nil {
-				logger.Warn("Failed to render URL template",
+				logger.Warn("Failed to render URL template, skipping action",
 					zap.String("action", actionConfig.Label),
 					zap.Error(err))
-				continue
+				continue // Skip this action but continue processing others
 			}
 
+			// Add valid action to the list
 			validActions = append(validActions, ntfyAction{
 				Action: actionConfig.Action,
 				Label:  actionConfig.Label,
@@ -250,11 +251,15 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 			})
 		}
 
+		// Only set X-Actions header if we have valid actions
 		if len(validActions) > 0 {
 			if jsonActions, err := json.Marshal(validActions); err == nil {
 				req.Header.Set("X-Actions", string(jsonActions))
 				logger.Debug("Set X-Actions header",
 					zap.String("actions", string(jsonActions)))
+			} else {
+				logger.Warn("Failed to marshal actions, sending alert without actions",
+					zap.Error(err))
 			}
 		}
 	}
