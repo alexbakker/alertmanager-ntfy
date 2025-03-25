@@ -25,6 +25,7 @@ type Expression struct {
 type Templates struct {
 	Title       *Template `yaml:"title"`
 	Description *Template `yaml:"description"`
+	Actions     *Template `yaml:"actions,omitempty"`
 }
 
 type Tag struct {
