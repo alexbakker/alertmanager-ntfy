@@ -29,3 +29,12 @@ ntfy:
         {{ if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
       description: |
         {{ index .Annotations "description" }}
+      actions: 
+        - action: "view"
+          label: "Dashboard"
+          url: "{{ .GeneratorURL }}"
+          condition: 'GeneratorURL != ""'
+        - action: "view"
+          label: "Runbook"
+          url: '{{ index .Annotations "runbook_url" }}'
+          condition: 'status == "firing" &&  annotations["runbook_url"] != ""' 

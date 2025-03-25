@@ -61,6 +61,16 @@ ntfy:
         {{ if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
       description: |
         {{ index .Annotations "description" }}
+      # Add ntfy actions https://docs.ntfy.sh/publish/?h=action#open-websiteapp
+      actions: 
+        - action: "view"
+          label: "Dashboard"
+          url: "{{ .GeneratorURL }}"
+          condition: 'GeneratorURL != ""'
+        - action: "view"
+          label: "Runbook"
+          url: '{{ index .Annotations "runbook_url" }}'
+          condition: 'status == "firing" &&  annotations["runbook_url"] != ""' 
 ```
 
 There are a couple of command line options as well that can be used to override
