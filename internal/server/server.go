@@ -31,6 +31,12 @@ type Server struct {
 	http   *http.Client
 }
 
+type ntfyAction struct {
+	Action string `json:"action"`
+	Label  string `json:"label"`
+	URL    string `json:"url"`
+}
+
 // HealthCheck handles health check requests
 func HealthCheck(logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -207,9 +213,20 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Actions).Execute(&actionsBuf, alert); err != nil {
 			logger.Warn("Failed to render actions template", zap.Error(err))
 		} else {
-			actions := strings.TrimSpace(actionsBuf.String())
-			if actions != "" {
-				req.Header.Set("X-Actions", actions)
+			actionStr := strings.TrimSpace(actionsBuf.String())
+			logger.Debug("Raw actions template output", zap.String("actions", actionStr))
+
+			var actions []ntfyAction
+			if err := json.Unmarshal([]byte(actionStr), &actions); err != nil {
+				logger.Warn("Invalid actions JSON",
+					zap.Error(err),
+					zap.String("raw_json", actionStr))
+			} else {
+				if jsonActions, err := json.Marshal(actions); err == nil {
+					req.Header.Set("X-Actions", string(jsonActions))
+					logger.Debug("Set X-Actions header",
+						zap.String("actions", string(jsonActions)))
+				}
 			}
 		}
 	}
