@@ -202,19 +202,6 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		req.Header.Set("X-Tags", strings.Join(tags, tagSeparator))
 	}
 
-	// Add actions header if configured
-	if s.cfg.Ntfy.Notification.Templates.Actions != nil {
-		var actionsBuf bytes.Buffer
-		if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Actions).Execute(&actionsBuf, alert); err != nil {
-			logger.Warn("Failed to render actions template", zap.Error(err))
-		} else {
-			actions := strings.TrimSpace(actionsBuf.String())
-			if actions != "" {
-				req.Header.Set("X-Actions", actions)
-			}
-		}
-	}
-
 	if s.cfg.Ntfy.Notification.Priority != nil {
 		priority, err := evalStringExpr(s.cfg.Ntfy.Notification.Priority, alert)
 		if err != nil {
