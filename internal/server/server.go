@@ -189,7 +189,10 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 
 		tags = append(tags, tag.Tag)
 	}
-	tags = append(tags, convertLabelsToTags(alert.Labels)...)
+	// Only convert labels to tags if enabled in config
+	if s.cfg.Ntfy.Notification.ConvertLabelsToTags {
+		tags = append(tags, convertLabelsToTags(alert.Labels)...)
+	}
 
 	if title != "" {
 		req.Header.Set("X-Title", title)

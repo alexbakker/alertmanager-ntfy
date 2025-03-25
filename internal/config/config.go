@@ -43,10 +43,11 @@ type StringExpression struct {
 }
 
 type Notification struct {
-	Topic     StringExpression  `yaml:"topic"`
-	Priority  *StringExpression `yaml:"priority"`
-	Tags      []*Tag            `yaml:"tags"`
-	Templates *Templates        `yaml:"templates"`
+	Topic               StringExpression  `yaml:"topic"`
+	Priority            *StringExpression `yaml:"priority"`
+	Tags                []*Tag            `yaml:"tags"`
+	Templates           *Templates        `yaml:"templates"`
+	ConvertLabelsToTags bool              `yaml:"convertLabelsToTags"`
 }
 
 type NtfyAuth struct {
