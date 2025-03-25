@@ -207,26 +207,54 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		req.Header.Set("X-Tags", strings.Join(tags, tagSeparator))
 	}
 
-	// Add actions header if configured
-	if s.cfg.Ntfy.Notification.Templates.Actions != nil {
-		var actionsBuf bytes.Buffer
-		if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Actions).Execute(&actionsBuf, alert); err != nil {
-			logger.Warn("Failed to render actions template", zap.Error(err))
-		} else {
-			actionStr := strings.TrimSpace(actionsBuf.String())
-			logger.Debug("Raw actions template output", zap.String("actions", actionStr))
+	// Add actions if configured
+	if len(s.cfg.Ntfy.Notification.Templates.Actions) > 0 {
+		var validActions []ntfyAction
 
-			var actions []ntfyAction
-			if err := json.Unmarshal([]byte(actionStr), &actions); err != nil {
-				logger.Warn("Invalid actions JSON",
-					zap.Error(err),
-					zap.String("raw_json", actionStr))
-			} else {
-				if jsonActions, err := json.Marshal(actions); err == nil {
-					req.Header.Set("X-Actions", string(jsonActions))
-					logger.Debug("Set X-Actions header",
-						zap.String("actions", string(jsonActions)))
+		for _, actionConfig := range s.cfg.Ntfy.Notification.Templates.Actions {
+			// Check condition if present
+			if actionConfig.Condition != nil {
+				match, err := actionConfig.Condition.Evaluable.EvalBool(context.Background(), alert.Map())
+				if err != nil {
+					logger.Warn("Action condition evaluation failed",
+						zap.String("action", actionConfig.Label),
+						zap.Error(err))
+					continue
 				}
+				if !match {
+					continue
+				}
+			}
+
+			// Execute URL template
+			var urlBuf bytes.Buffer
+			urlTmpl, err := template.New("url").Parse(actionConfig.URL)
+			if err != nil {
+				logger.Warn("Invalid URL template",
+					zap.String("action", actionConfig.Label),
+					zap.Error(err))
+				continue
+			}
+
+			if err := urlTmpl.Execute(&urlBuf, alert); err != nil {
+				logger.Warn("Failed to render URL template",
+					zap.String("action", actionConfig.Label),
+					zap.Error(err))
+				continue
+			}
+
+			validActions = append(validActions, ntfyAction{
+				Action: actionConfig.Action,
+				Label:  actionConfig.Label,
+				URL:    strings.TrimSpace(urlBuf.String()),
+			})
+		}
+
+		if len(validActions) > 0 {
+			if jsonActions, err := json.Marshal(validActions); err == nil {
+				req.Header.Set("X-Actions", string(jsonActions))
+				logger.Debug("Set X-Actions header",
+					zap.String("actions", string(jsonActions)))
 			}
 		}
 	}

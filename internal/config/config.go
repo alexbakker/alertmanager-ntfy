@@ -25,7 +25,7 @@ type Expression struct {
 type Templates struct {
 	Title       *Template `yaml:"title"`
 	Description *Template `yaml:"description"`
-	Actions     *Template `yaml:"actions,omitempty"`
+	Actions     []Action  `yaml:"actions,omitempty"`
 }
 
 type Tag struct {
@@ -72,6 +72,13 @@ type Config struct {
 	HTTP *HTTP       `yaml:"http"`
 	Ntfy *Ntfy       `yaml:"ntfy"`
 	Log  *zap.Config `yaml:"log"`
+}
+
+type Action struct {
+	Action    string      `yaml:"action"`
+	Label     string      `yaml:"label"`
+	URL       string      `yaml:"url"`
+	Condition *Expression `yaml:"condition,omitempty"`
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
