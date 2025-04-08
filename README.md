@@ -100,7 +100,7 @@ Alertmanager configuration file:
 
 ```yaml
 webhook_configs:
-- url: http://127.0.0.1:8111/hook
+- url: http://127.0.0.1:8000/hook
   http_config:
     basic_auth:
       username: alertmanager
@@ -128,7 +128,7 @@ To replicate the configuration example above:
     enable = true;
     settings = {
       http = {
-        addr = "127.0.0.1:8111";
+        addr = "127.0.0.1:8000";
       };
       ntfy = {
         baseurl = "https://ntfy.sh";
