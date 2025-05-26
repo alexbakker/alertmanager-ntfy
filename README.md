@@ -38,8 +38,11 @@ http:
 ntfy:
   baseurl: https://ntfy.sh
   auth:
-    username: "admin"
-    password: "verysecure"
+    basic:
+      username: "admin"
+      password: "verysecure"
+    # OR
+    token: "verysecureauthtoken"
   notification:
     # The topic can either be a hardcoded string or a gval expression that evaluates to a string
     topic: alertmanager
@@ -87,8 +90,9 @@ http:
     password: "verysecure"
 ntfy:
   auth:
-    username: "admin"
-    password: "verysecure"
+    basic:
+      username: "admin"
+      password: "verysecure"
 ```
 
 ## Alertmanager
