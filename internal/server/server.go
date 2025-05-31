@@ -70,7 +70,19 @@ func New(logger *zap.Logger, cfg *config.Config) *Server {
 		http:   &http.Client{Timeout: cfg.Ntfy.Timeout},
 	}
 	s.e.POST("/hook", s.handleWebhook)
+	s.e.GET("/health", s.handleHealthCheck)
 	return &s
+}
+
+func (s *Server) handleHealthCheck(c *gin.Context) {
+	logger := s.logger
+	if requestID, ok := c.Get(keyRequestID); ok {
+		logger = logger.With(zap.String(keyRequestID, requestID.(string)))
+	}
+	logger.Debug("Handling healthcheck")
+	c.JSON(200, gin.H{
+		"status": "OK",
+	})
 }
 
 func (s *Server) handleWebhook(c *gin.Context) {
