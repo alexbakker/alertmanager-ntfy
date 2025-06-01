@@ -55,22 +55,33 @@ func New(logger *zap.Logger, cfg *config.Config) *Server {
 	}))
 	e.Use(ginzap.RecoveryWithZap(logger, true))
 
-	if cfg.HTTP.Auth.Valid() {
-		e.Use(gin.BasicAuth(gin.Accounts{
-			cfg.HTTP.Auth.Username: cfg.HTTP.Auth.Password,
-		}))
-	} else {
-		logger.Warn("Basic auth is disabled")
-	}
-
 	s := Server{
 		e:      e,
 		cfg:    cfg,
 		logger: logger,
 		http:   &http.Client{Timeout: cfg.Ntfy.Timeout},
 	}
-	s.e.POST("/hook", s.handleWebhook)
+
+	if cfg.HTTP.Auth.Valid() {
+		s.e.POST("/hook", gin.BasicAuth(gin.Accounts{cfg.HTTP.Auth.Username: cfg.HTTP.Auth.Password}), s.handleWebhook)
+	} else {
+		logger.Warn("Basic auth is disabled")
+		s.e.POST("/hook", s.handleWebhook)
+	}
+
+	s.e.GET("/health", s.handleHealthCheck)
 	return &s
+}
+
+func (s *Server) handleHealthCheck(c *gin.Context) {
+	logger := s.logger
+	if requestID, ok := c.Get(keyRequestID); ok {
+		logger = logger.With(zap.String(keyRequestID, requestID.(string)))
+	}
+	logger.Debug("Handling healthcheck")
+	c.JSON(200, gin.H{
+		"status": "OK",
+	})
 }
 
 func (s *Server) handleWebhook(c *gin.Context) {
