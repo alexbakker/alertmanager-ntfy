@@ -189,6 +189,15 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 			req.Header.Set("X-Priority", priority)
 		}
 	}
+	for headerName, headerTemplate := range s.cfg.Ntfy.Notification.Templates.Headers {
+		var headerBuf bytes.Buffer
+		if err := (*template.Template)(headerTemplate).Execute(&headerBuf, alert); err != nil {
+			return fmt.Errorf("render header %s template: %w", headerName, err)
+		}
+		headerValue := strings.ReplaceAll(strings.TrimSpace(headerBuf.String()), "\n", "")
+
+		req.Header.Set(headerName, headerValue)
+	}
 
 	res, err := s.http.Do(req)
 	if err != nil {
