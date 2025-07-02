@@ -2,10 +2,10 @@ package config
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
-	"unicode"
 
 	"github.com/PaesslerAG/gval"
 	"go.uber.org/zap"
@@ -13,6 +13,9 @@ import (
 
 var (
 	exprLang = gval.Full()
+
+	// Source: https://github.com/binwiederhier/ntfy/blob/30301c8a7ff9e54ae505daf73a7f1571e7fefae3/user/types.go#L245
+	allowedTopicRegex = regexp.MustCompile(`^[-_A-Za-z0-9]{1,64}$`)
 )
 
 type Template template.Template
@@ -89,6 +92,7 @@ func (t *Template) UnmarshalText(text []byte) error {
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *Expression) UnmarshalText(text []byte) error {
 	s := strings.TrimSpace(string(text))
+
 	evaluable, err := exprLang.NewEvaluable(s)
 	if err != nil {
 		return fmt.Errorf("bad expression: %w", err)
@@ -106,7 +110,7 @@ func (e *StringExpression) UnmarshalText(text []byte) error {
 	s := strings.TrimSpace(string(text))
 	se := StringExpression{Text: s}
 
-	if !isAlphaNumeric(s) {
+	if isExpression(s) {
 		var expr Expression
 		if err := expr.UnmarshalText(text); err != nil {
 			return err
@@ -125,12 +129,8 @@ func (a *BasicAuth) Valid() bool {
 	return a != nil && a.Username != "" && a.Password != ""
 }
 
-func isAlphaNumeric(s string) bool {
-	for _, c := range s {
-		if !unicode.IsLetter(c) && !unicode.IsDigit(c) {
-			return false
-		}
-	}
-
-	return true
+// isExpression reports whether the given string is likely to be an expression by
+// checking whether it'd be a valid topic.
+func isExpression(s string) bool {
+	return !allowedTopicRegex.Match([]byte(s))
 }
