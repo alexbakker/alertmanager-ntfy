@@ -15,7 +15,7 @@ Android device:
 ## Configuration
 
 The primary way to configure the service is through a YAML configuration file.
-An example configuration is shown below.
+An example configuration is availabe in [config.example.yml](config.example.yml).
 
 Some of the ntfy notification options also accept a
 [gval](https://github.com/PaesslerAG/gval) expression, rather than just a
@@ -62,6 +62,9 @@ ntfy:
         {{ if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
       description: |
         {{ index .Annotations "description" }}
+      headers:
+        X-Click: |
+          {{ .GeneratorURL }}
 ```
 
 There are a couple of command line options as well that can be used to override

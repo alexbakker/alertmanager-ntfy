@@ -1,13 +1,21 @@
 name: build
 on: [pull_request, push]
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check config sync
+        run: |
+          if ! diff -u config.example.yml <(awk '/^```yaml$/{flag=1; next} /^```$/ && flag{exit} flag' README.md); then
+            echo "Configuration example in README.md is out of sync with config.example.yml"
+          fi
   nix:
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@de22e16c4711fca50c816cc9081563429d1cf563
-        with:
-          diagnostic-endpoint:
       - name: Build
         run: |
           nix build --print-build-logs
@@ -15,6 +23,7 @@ jobs:
         run: |
           nix flake check
   container:
+    needs: check
     runs-on: ubuntu-latest
     env:
       PLATFORMS: linux/amd64,linux/arm64
