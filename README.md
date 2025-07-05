@@ -12,6 +12,15 @@ Android device:
 
 <img width="400" src="screenshots/notifications.png"/>
 
+## Installation
+
+There are a couple of ways to install alertmanager-ntfy:
+
+- ``go install github.com/alexbakker/alertmanager-ntfy/cmd/alertmanager-ntfy``
+- [Container image](https://github.com/alexbakker/alertmanager-ntfy/pkgs/container/alertmanager-ntfy)
+- [Helm chart (unofficial)](https://artifacthub.io/packages/helm/djjudas21/alertmanager-ntfy)
+- [NixOS module](https://nixos.org/manual/nixos/stable/options#opt-services.prometheus.alertmanager-ntfy.enable)
+
 ## Configuration
 
 The primary way to configure the service is through a YAML configuration file.
@@ -165,3 +174,5 @@ To replicate the configuration example above:
   };
 }
 ```
+
+Nixpkgs also has a module for alertmanager-ntfy: https://nixos.org/manual/nixos/stable/options#opt-services.prometheus.alertmanager-ntfy.enable
