@@ -70,6 +70,8 @@ jobs:
         with:
           context: .
           file: ./Containerfile
+          build-args: |
+            GO_VERSION=${{ steps.go-version.outputs.go-version }}
           platforms: ${{ env.PLATFORMS }}
           push: true
           tags: |
