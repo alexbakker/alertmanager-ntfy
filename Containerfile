@@ -1,4 +1,5 @@
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+ARG GO_VERSION
+FROM --platform=$BUILDPLATFORM golang:$GO_VERSION-alpine AS builder
 ARG TARGETOS TARGETARCH
 
 RUN apk add -U --no-cache ca-certificates tzdata
