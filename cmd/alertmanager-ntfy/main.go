@@ -25,6 +25,7 @@ var (
 	})
 
 	defaultConfig = config.Config{
+		FailOnForwardError: true,
 		HTTP: &config.HTTP{
 			Addr: ":8000",
 		},

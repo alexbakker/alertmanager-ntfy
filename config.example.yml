@@ -1,3 +1,5 @@
+# Whether to return http status code 5xx when forwarding fails.
+failOnForwardError: true
 http:
   addr: :8000
   auth:
