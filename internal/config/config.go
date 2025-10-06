@@ -71,9 +71,10 @@ type HTTP struct {
 }
 
 type Config struct {
-	HTTP *HTTP       `yaml:"http"`
-	Ntfy *Ntfy       `yaml:"ntfy"`
-	Log  *zap.Config `yaml:"log"`
+	HTTP               *HTTP       `yaml:"http"`
+	Ntfy               *Ntfy       `yaml:"ntfy"`
+	Log                *zap.Config `yaml:"log"`
+	FailOnForwardError bool        `yaml:"failOnForwardError"`
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
