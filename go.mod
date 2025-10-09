@@ -1,6 +1,8 @@
 module github.com/alexbakker/alertmanager-ntfy
 
-go 1.19
+go 1.25.2
+toolchain go1.25.2
+
 
 require (
 	github.com/PaesslerAG/gval v1.2.1

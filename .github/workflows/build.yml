@@ -8,15 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@de22e16c4711fca50c816cc9081563429d1cf563
-        with:
-          diagnostic-endpoint:
-      - name: Build
-        run: |
-          nix build --print-build-logs
-      - name: Check
-        run: |
-          nix flake check
+      - name: Get Go version
+        id: go-version
+        run: echo "go-version=$(grep '^toolchain' go.mod | awk '{print $2}' | sed 's/^go//')" >> $GITHUB_OUTPUT
 
       # Github container registry credentials
       - name: Log in to the Github Container registry ${{ env.GH_REGISTRY }} as ${{ github.actor }}
@@ -50,3 +44,4 @@ jobs:
           build-args: |
             MY_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             MY_BUILTBY=github-action
+            GO_VERSION=${{ steps.go-version.outputs.go-version }}
