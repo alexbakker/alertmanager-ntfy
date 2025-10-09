@@ -1,5 +1,5 @@
 # Build stage
-ARG GO_VERSION
+ARG GO_VERSION=1.25.2
 FROM golang:${GO_VERSION}-alpine AS builder
 
 WORKDIR /build
