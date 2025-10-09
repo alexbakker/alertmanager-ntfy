@@ -1,10 +1,9 @@
-ARG GO_VERSION
 # Build stage
-FROM golang:$GO_VERSION-alpine AS builder
+ARG GO_VERSION
+FROM golang:${GO_VERSION}-alpine AS builder
 
 WORKDIR /build
 COPY . .
-RUN ls .
 RUN go build -o alertmanager-ntfy ./cmd/alertmanager-ntfy
 
 # Final stage
