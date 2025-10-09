@@ -4,6 +4,7 @@ FROM golang:$GO_VERSION-alpine AS builder
 
 WORKDIR /build
 COPY . .
+RUN ls .
 RUN go build -o alertmanager-ntfy ./cmd/alertmanager-ntfy
 
 # Final stage
