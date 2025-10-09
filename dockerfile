@@ -1,12 +1,6 @@
-FROM alpine:latest
-
-# Add non-root user with configurable UID/GID - defaults are removed from first stage
-ARG USER_ID
-ARG GROUP_ID
-
-WORKDIR /app
 # Build stage
-FROM golang:alpine AS builder
+ARG GO_VERSION
+FROM golang:$GO_VERSION-alpine AS builder
 
 WORKDIR /build
 COPY . .
