@@ -1,6 +1,6 @@
 module github.com/alexbakker/alertmanager-ntfy
 
-go 1.25.2
+go 1.25
 toolchain go1.25.2
 
 require (
