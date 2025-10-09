@@ -1,6 +1,7 @@
 # Build stage
-ARG GO_VERSION
-FROM golang:$GO_VERSION-alpine AS builder
+# ARG GO_VERSION
+# FROM golang:$GO_VERSION-alpine AS builder
+FROM golang:alpine AS builder
 
 WORKDIR /build
 COPY . .
