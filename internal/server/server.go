@@ -100,22 +100,35 @@ func (s *Server) handleWebhook(c *gin.Context) {
 
 	if len(payload.Alerts) == 0 {
 		logger.Warn("Received an empty list of alerts")
-	} else {
-		go s.forwardAlerts(logger, payload.Alerts)
+		c.Status(http.StatusOK)
+		return
 	}
 
+	if !s.cfg.Ntfy.Async {
+		if s.forwardAlerts(logger, payload.Alerts) {
+			c.Status(http.StatusOK)
+		} else {
+			c.Status(http.StatusBadGateway)
+		}
+		return
+	}
+
+	go s.forwardAlerts(logger, payload.Alerts)
 	c.Status(http.StatusAccepted)
 }
 
-func (s *Server) forwardAlerts(logger *zap.Logger, alerts []*alertmanager.Alert) {
+func (s *Server) forwardAlerts(logger *zap.Logger, alerts []*alertmanager.Alert) bool {
+	success := true
 	for _, alert := range alerts {
 		logger := logger.With(zap.String("alert_fingerprint", alert.Fingerprint))
 		if err := s.forwardAlert(logger, alert); err != nil {
 			logger.Error("Failed to forward alert to ntfy", zap.Error(err))
+			success = false
 		} else {
 			logger.Info("Successfully forwarded alert to ntfy")
 		}
 	}
+	return success
 }
 
 func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) error {

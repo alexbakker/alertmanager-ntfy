@@ -63,6 +63,7 @@ type Ntfy struct {
 	Timeout      time.Duration `yaml:"timeout"`
 	Auth         *NtfyAuth     `yaml:"auth"`
 	Notification Notification  `yaml:"notification"`
+	Async        bool          `yaml:"async"`
 }
 
 type HTTP struct {

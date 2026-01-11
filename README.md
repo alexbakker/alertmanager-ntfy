@@ -74,6 +74,10 @@ ntfy:
       headers:
         X-Click: |
           {{ .GeneratorURL }}
+  # Whether to forward alerts asynchronously. When enabled, a 202 status code is
+  # returned immediately. When disabled, forwarding errors result in a 5xx status
+  # code.
+  async: false
 ```
 
 There are a couple of command line options as well that can be used to override
