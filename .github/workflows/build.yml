@@ -9,6 +9,7 @@ jobs:
         run: |
           if ! diff -u config.example.yml <(awk '/^```yaml$/{flag=1; next} /^```$/ && flag{exit} flag' README.md); then
             echo "Configuration example in README.md is out of sync with config.example.yml"
+            exit 1
           fi
   nix:
     needs: check
