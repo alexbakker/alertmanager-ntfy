@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -52,13 +53,19 @@ func main() {
 
 	configFiles := f.StringSlice("configs", []string{"config.yml"}, "the yaml configuration files to load and merge")
 	f.String("log-level", defaultConfig.Log.Level.String(), "the log level to use")
-	f.String("http-addr", defaultConfig.HTTP.Addr, "the address to have the HTTP server listen on")
+	httpAddr := f.String("http-addr", defaultConfig.HTTP.Addr, "the address to have the HTTP server listen on")
 	f.String("ntfy-baseurl", defaultConfig.Ntfy.BaseURL, "the ntfy url to forward alerts to")
 	f.String("ntfy-topic", defaultConfig.Ntfy.Notification.Topic.Text, "the ntfy topic")
 	f.String("ntfy-priority", defaultConfig.Ntfy.Notification.Priority.Text, "the ntfy priority")
 	f.Duration("ntfy-timeout", defaultConfig.Ntfy.Timeout, "the ntfy request timeout")
+	healthCheck := f.Bool("health-check", false, "perform health check and exit")
 	if err := f.Parse(os.Args[1:]); err != nil {
 		exitWithError(err.Error())
+	}
+
+	if *healthCheck {
+		doHealthCheck(*httpAddr)
+		return
 	}
 
 	if configFiles == nil || len(*configFiles) == 0 {
@@ -102,4 +109,26 @@ func exitWithError(msg string) {
 
 func convertFlag(key string, value string) (string, interface{}) {
 	return strings.ReplaceAll(key, "-", "."), value
+}
+
+func doHealthCheck(addr string) {
+	url := addr
+	if strings.HasPrefix(url, ":") {
+		url = "localhost" + url
+	}
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "http://" + url
+	}
+	url = strings.TrimSuffix(url, "/") + "/health"
+
+	resp, err := http.Get(url)
+	if err != nil {
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 200 {
+		os.Exit(0)
+	}
+	os.Exit(1)
 }
