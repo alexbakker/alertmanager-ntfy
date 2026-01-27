@@ -30,6 +30,20 @@ type Server struct {
 	http   *http.Client
 }
 
+type ntfyAction struct {
+	Action string `json:"action"`
+	Label  string `json:"label"`
+	URL    string `json:"url"`
+}
+
+// HealthCheck handles health check requests
+func HealthCheck(logger *zap.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		logger.Debug("Health check request received")
+		c.String(http.StatusOK, "ok")
+	}
+}
+
 func New(logger *zap.Logger, cfg *config.Config) *Server {
 	gin.SetMode(gin.ReleaseMode)
 	e := gin.New()
@@ -190,7 +204,10 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 
 		tags = append(tags, tag.Tag)
 	}
-	tags = append(tags, convertLabelsToTags(alert.Labels)...)
+	// Only convert labels to tags if enabled in config
+	if s.cfg.Ntfy.Notification.ConvertLabelsToTags {
+		tags = append(tags, convertLabelsToTags(alert.Labels)...)
+	}
 
 	if title != "" {
 		req.Header.Set("X-Title", title)
@@ -198,6 +215,74 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 	if len(tags) > 0 {
 		req.Header.Set("X-Tags", strings.Join(tags, tagSeparator))
 	}
+
+	// Add actions if configured
+	if len(s.cfg.Ntfy.Notification.Templates.Actions) > 0 {
+		var validActions []ntfyAction
+
+		for _, actionConfig := range s.cfg.Ntfy.Notification.Templates.Actions {
+			// Check condition if present
+			if actionConfig.Condition != nil {
+				alertMap := alert.Map()
+				match, err := actionConfig.Condition.Evaluable.EvalBool(context.Background(), alertMap)
+				if err != nil {
+					// Log both warning and detailed debug info
+					logger.Warn("Action condition evaluation failed, skipping action",
+						zap.String("action", actionConfig.Label),
+						zap.Error(err))
+
+					logger.Debug("Action condition evaluation details",
+						zap.String("action", actionConfig.Label),
+						zap.String("condition", actionConfig.Condition.Text),
+						zap.Any("alert_map", alertMap))
+					continue // Skip this action but continue processing others
+				}
+				if !match {
+					logger.Debug("Action condition not met",
+						zap.String("action", actionConfig.Label),
+						zap.String("condition", actionConfig.Condition.Text))
+					continue
+				}
+			}
+
+			// Execute URL template
+			var urlBuf bytes.Buffer
+			urlTmpl, err := template.New("url").Parse(actionConfig.URL)
+			if err != nil {
+				logger.Warn("Invalid URL template, skipping action",
+					zap.String("action", actionConfig.Label),
+					zap.Error(err))
+				continue // Skip this action but continue processing others
+			}
+
+			if err := urlTmpl.Execute(&urlBuf, alert); err != nil {
+				logger.Warn("Failed to render URL template, skipping action",
+					zap.String("action", actionConfig.Label),
+					zap.Error(err))
+				continue // Skip this action but continue processing others
+			}
+
+			// Add valid action to the list
+			validActions = append(validActions, ntfyAction{
+				Action: actionConfig.Action,
+				Label:  actionConfig.Label,
+				URL:    strings.TrimSpace(urlBuf.String()),
+			})
+		}
+
+		// Only set X-Actions header if we have valid actions
+		if len(validActions) > 0 {
+			if jsonActions, err := json.Marshal(validActions); err == nil {
+				req.Header.Set("X-Actions", string(jsonActions))
+				logger.Debug("Set X-Actions header",
+					zap.String("actions", string(jsonActions)))
+			} else {
+				logger.Warn("Failed to marshal actions, sending alert without actions",
+					zap.Error(err))
+			}
+		}
+	}
+
 	if s.cfg.Ntfy.Notification.Priority != nil {
 		priority, err := evalStringExpr(s.cfg.Ntfy.Notification.Priority, alert)
 		if err != nil {

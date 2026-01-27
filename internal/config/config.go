@@ -28,6 +28,7 @@ type Expression struct {
 type Templates struct {
 	Title       *Template            `yaml:"title"`
 	Description *Template            `yaml:"description"`
+	Actions     []Action             `yaml:"actions,omitempty"`
 	Headers     map[string]*Template `yaml:headers`
 }
 
@@ -47,10 +48,11 @@ type StringExpression struct {
 }
 
 type Notification struct {
-	Topic     StringExpression  `yaml:"topic"`
-	Priority  *StringExpression `yaml:"priority"`
-	Tags      []*Tag            `yaml:"tags"`
-	Templates *Templates        `yaml:"templates"`
+	Topic               StringExpression  `yaml:"topic"`
+	Priority            *StringExpression `yaml:"priority"`
+	Tags                []*Tag            `yaml:"tags"`
+	Templates           *Templates        `yaml:"templates"`
+	ConvertLabelsToTags bool              `yaml:"convertLabelsToTags"`
 }
 
 type NtfyAuth struct {
@@ -75,6 +77,13 @@ type Config struct {
 	HTTP *HTTP       `yaml:"http"`
 	Ntfy *Ntfy       `yaml:"ntfy"`
 	Log  *zap.Config `yaml:"log"`
+}
+
+type Action struct {
+	Action    string      `yaml:"action"`
+	Label     string      `yaml:"label"`
+	URL       string      `yaml:"url"`
+	Condition *Expression `yaml:"condition,omitempty"`
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
