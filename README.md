@@ -12,10 +12,19 @@ Android device:
 
 <img width="400" src="screenshots/notifications.png"/>
 
+## Installation
+
+There are a couple of ways to install alertmanager-ntfy:
+
+- ``go install github.com/alexbakker/alertmanager-ntfy/cmd/alertmanager-ntfy``
+- [Container image](https://github.com/alexbakker/alertmanager-ntfy/pkgs/container/alertmanager-ntfy)
+- [Helm chart (unofficial)](https://artifacthub.io/packages/helm/djjudas21/alertmanager-ntfy)
+- [NixOS module](https://nixos.org/manual/nixos/stable/options#opt-services.prometheus.alertmanager-ntfy.enable)
+
 ## Configuration
 
 The primary way to configure the service is through a YAML configuration file.
-An example configuration is shown below.
+An example configuration is availabe in [config.example.yml](config.example.yml).
 
 Some of the ntfy notification options also accept a
 [gval](https://github.com/PaesslerAG/gval) expression, rather than just a
@@ -38,8 +47,11 @@ http:
 ntfy:
   baseurl: https://ntfy.sh
   auth:
-    username: "admin"
-    password: "verysecure"
+    basic:
+      username: "admin"
+      password: "verysecure"
+    # OR
+    token: "verysecureauthtoken"
   notification:
     # The topic can either be a hardcoded string or a gval expression that evaluates to a string
     topic: alertmanager
@@ -71,6 +83,13 @@ ntfy:
           label: "Runbook"
           url: '{{ index .Annotations "runbook_url" }}'
           condition: 'status == "firing" &&  annotations["runbook_url"] != ""' 
+      headers:
+        X-Click: |
+          {{ .GeneratorURL }}
+  # Whether to forward alerts asynchronously. When enabled, a 202 status code is
+  # returned immediately. When disabled, forwarding errors result in a 5xx status
+  # code.
+  async: false
 ```
 
 There are a couple of command line options as well that can be used to override
@@ -99,8 +118,9 @@ http:
     password: "verysecure"
 ntfy:
   auth:
-    username: "admin"
-    password: "verysecure"
+    basic:
+      username: "admin"
+      password: "verysecure"
 ```
 
 ## Alertmanager
@@ -140,7 +160,7 @@ To replicate the configuration example above:
     enable = true;
     settings = {
       http = {
-        addr = "127.0.0.1:8111";
+        addr = "127.0.0.1:8000";
       };
       ntfy = {
         baseurl = "https://ntfy.sh";
@@ -170,3 +190,5 @@ To replicate the configuration example above:
   };
 }
 ```
+
+Nixpkgs also has a module for alertmanager-ntfy: https://nixos.org/manual/nixos/stable/options#opt-services.prometheus.alertmanager-ntfy.enable

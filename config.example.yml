@@ -6,8 +6,11 @@ http:
 ntfy:
   baseurl: https://ntfy.sh
   auth:
-    username: "admin"
-    password: "verysecure"
+    basic:
+      username: "admin"
+      password: "verysecure"
+    # OR
+    token: "verysecureauthtoken"
   notification:
     # The topic can either be a hardcoded string or a gval expression that evaluates to a string
     topic: alertmanager
@@ -29,6 +32,7 @@ ntfy:
         {{ if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
       description: |
         {{ index .Annotations "description" }}
+      # Add ntfy actions https://docs.ntfy.sh/publish/?h=action#open-websiteapp
       actions: 
         - action: "view"
           label: "Dashboard"
@@ -38,3 +42,10 @@ ntfy:
           label: "Runbook"
           url: '{{ index .Annotations "runbook_url" }}'
           condition: 'status == "firing" &&  annotations["runbook_url"] != ""' 
+      headers:
+        X-Click: |
+          {{ .GeneratorURL }}
+  # Whether to forward alerts asynchronously. When enabled, a 202 status code is
+  # returned immediately. When disabled, forwarding errors result in a 5xx status
+  # code.
+  async: false

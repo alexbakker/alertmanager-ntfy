@@ -1,0 +1,33 @@
+name: security
+on:
+  push:
+    branches:
+      - master
+  schedule:
+    - cron: "0 0 * * 1"
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get Go version
+        id: go-version
+        run: echo "go-version=$(grep '^toolchain' go.mod | awk '{print $2}' | sed 's/^go//')" >> $GITHUB_OUTPUT
+      - uses: golang/govulncheck-action@357ea4a5418cb457db33ccd168e28f68e075eba0
+        with:
+          check-latest: false
+          go-version-input: ${{ steps.go-version.outputs.go-version }}
+          output-format: sarif
+          output-file: govulncheck.sarif
+          repo-checkout: false
+      - name: Remove duplicate tags from SARIF
+        run: |
+          dest=$(mktemp)
+          jq '.runs[].tool.driver.rules[].properties.tags |= unique' govulncheck.sarif > "$dest" && mv "$dest" govulncheck.sarif
+      - uses: github/codeql-action/upload-sarif@64d10c13136e1c5bce3e5fbde8d4906eeaafc885
+        with:
+          sarif_file: govulncheck.sarif
+          category: govulncheck
