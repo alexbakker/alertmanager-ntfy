@@ -4,44 +4,79 @@ env:
   GH_REGISTRY: ghcr.io # Github Container Registry
   FULL_IMAGE_NAME: ${{ github.repository }} # full image name: owner/image
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check config sync
+        run: |
+          if ! diff -u config.example.yml <(awk '/^```yaml$/{flag=1; next} /^```$/ && flag{exit} flag' README.md); then
+            echo "Configuration example in README.md is out of sync with config.example.yml"
+            exit 1
+          fi
+  nix:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@de22e16c4711fca50c816cc9081563429d1cf563
+      - name: Build
+        run: |
+          nix build --print-build-logs
+      - name: Check
+        run: |
+          nix flake check
+      - name: Check Go version
+        run: |
+          MOD_GO=$(grep '^toolchain' go.mod | awk '{print $2}' | sed 's/^go//')
+          NIX_GO=$(nix develop --command go version | awk '{print $3}' | sed 's/^go//')
+          if [ "$MOD_GO" != "$NIX_GO" ]; then
+            echo "Go version mismatch: go.mod has $MOD_GO but flake.nix has $NIX_GO"
+            exit 1
+          fi
+  container:
+    needs: check
+    runs-on: ubuntu-latest
+    env:
+      PLATFORMS: linux/amd64,linux/arm64
+      IMAGE_NAME: ghcr.io/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
       - name: Get Go version
         id: go-version
         run: echo "go-version=$(grep '^toolchain' go.mod | awk '{print $2}' | sed 's/^go//')" >> $GITHUB_OUTPUT
-
-      # Github container registry credentials
-      - name: Log in to the Github Container registry ${{ env.GH_REGISTRY }} as ${{ github.actor }}
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.GH_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          
-      # tags and labels
-      - name: Extract metadata (tags, labels) for image ${{ env.FULL_IMAGE_NAME }}
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            ${{ env.GH_REGISTRY }}/${{ env.FULL_IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=ref,event=pr
-            type=ref,event=branch
-
-      # build OCI image and push to registries (Docker Hub and Github Container Registry)
-      - name: build and push docker image
-        uses: docker/build-push-action@v6.15.0
+      - name: Build container image
+        if: "!startsWith(github.ref_name, 'v')"
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
         with:
           context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          file: ./Containerfile
           build-args: |
-            MY_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            MY_BUILTBY=github-action
             GO_VERSION=${{ steps.go-version.outputs.go-version }}
+          platforms: ${{ env.PLATFORMS }}
+          push: false
+      - name: Log into GHCR
+        if: startsWith(github.ref_name, 'v')
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Parse version
+        if: startsWith(github.ref_name, 'v')
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+      - name: Build and push container image
+        if: startsWith(github.ref_name, 'v')
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        with:
+          context: .
+          file: ./Containerfile
+          build-args: |
+            GO_VERSION=${{ steps.go-version.outputs.go-version }}
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}

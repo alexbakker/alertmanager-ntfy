@@ -91,15 +91,25 @@ func New(logger *zap.Logger, cfg *config.Config) *Server {
 	})
 
 	if cfg.HTTP.Auth.Valid() {
-		e.Use(gin.BasicAuth(gin.Accounts{
-			cfg.HTTP.Auth.Username: cfg.HTTP.Auth.Password,
-		}))
+		s.e.POST("/hook", gin.BasicAuth(gin.Accounts{cfg.HTTP.Auth.Username: cfg.HTTP.Auth.Password}), s.handleWebhook)
 	} else {
 		logger.Warn("Basic auth is disabled")
+		s.e.POST("/hook", s.handleWebhook)
 	}
 
-	s.e.POST("/hook", s.handleWebhook)
+	s.e.GET("/health", s.handleHealthCheck)
 	return &s
+}
+
+func (s *Server) handleHealthCheck(c *gin.Context) {
+	logger := s.logger
+	if requestID, ok := c.Get(keyRequestID); ok {
+		logger = logger.With(zap.String(keyRequestID, requestID.(string)))
+	}
+	logger.Debug("Handling healthcheck")
+	c.JSON(200, gin.H{
+		"status": "OK",
+	})
 }
 
 func (s *Server) handleWebhook(c *gin.Context) {
@@ -118,22 +128,35 @@ func (s *Server) handleWebhook(c *gin.Context) {
 
 	if len(payload.Alerts) == 0 {
 		logger.Warn("Received an empty list of alerts")
-	} else {
-		go s.forwardAlerts(logger, payload.Alerts)
+		c.Status(http.StatusOK)
+		return
 	}
 
+	if !s.cfg.Ntfy.Async {
+		if s.forwardAlerts(logger, payload.Alerts) {
+			c.Status(http.StatusOK)
+		} else {
+			c.Status(http.StatusBadGateway)
+		}
+		return
+	}
+
+	go s.forwardAlerts(logger, payload.Alerts)
 	c.Status(http.StatusAccepted)
 }
 
-func (s *Server) forwardAlerts(logger *zap.Logger, alerts []*alertmanager.Alert) {
+func (s *Server) forwardAlerts(logger *zap.Logger, alerts []*alertmanager.Alert) bool {
+	success := true
 	for _, alert := range alerts {
 		logger := logger.With(zap.String("alert_fingerprint", alert.Fingerprint))
 		if err := s.forwardAlert(logger, alert); err != nil {
 			logger.Error("Failed to forward alert to ntfy", zap.Error(err))
+			success = false
 		} else {
 			logger.Info("Successfully forwarded alert to ntfy")
 		}
 	}
+	return success
 }
 
 func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) error {
@@ -288,6 +311,15 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		if priority != "" {
 			req.Header.Set("X-Priority", priority)
 		}
+	}
+	for headerName, headerTemplate := range s.cfg.Ntfy.Notification.Templates.Headers {
+		var headerBuf bytes.Buffer
+		if err := (*template.Template)(headerTemplate).Execute(&headerBuf, alert); err != nil {
+			return fmt.Errorf("render header %s template: %w", headerName, err)
+		}
+		headerValue := strings.ReplaceAll(strings.TrimSpace(headerBuf.String()), "\n", "")
+
+		req.Header.Set(headerName, headerValue)
 	}
 
 	res, err := s.http.Do(req)
