@@ -32,6 +32,7 @@ ntfy:
         {{ if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
       description: |
         {{ index .Annotations "description" }}
+      # Add ntfy actions https://docs.ntfy.sh/publish/?h=action#open-websiteapp
       actions: 
         - action: "view"
           label: "Dashboard"
