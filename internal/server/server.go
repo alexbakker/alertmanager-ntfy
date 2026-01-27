@@ -21,7 +21,6 @@ import (
 
 const (
 	keyRequestID = "request_id"
-	pathHealth   = "/"
 )
 
 type Server struct {
@@ -67,8 +66,6 @@ func New(logger *zap.Logger, cfg *config.Config) *Server {
 			}
 			return []zapcore.Field{zap.String(keyRequestID, requestID.(string))}
 		}),
-		// Skip logging for health checks
-		SkipPaths: []string{pathHealth},
 	}))
 	e.Use(ginzap.RecoveryWithZap(logger, true))
 
@@ -78,17 +75,6 @@ func New(logger *zap.Logger, cfg *config.Config) *Server {
 		logger: logger,
 		http:   &http.Client{Timeout: cfg.Ntfy.Timeout},
 	}
-
-	// Add health check endpoint (no auth required)
-	e.GET(pathHealth, HealthCheck(logger))
-
-	// Use a middleware that does not require auth for healthcheck
-	e.Use(func(c *gin.Context) {
-		if c.Request.URL.Path == pathHealth {
-			c.Next()
-			return
-		}
-	})
 
 	if cfg.HTTP.Auth.Valid() {
 		s.e.POST("/hook", gin.BasicAuth(gin.Accounts{cfg.HTTP.Auth.Username: cfg.HTTP.Auth.Password}), s.handleWebhook)
