@@ -1,4 +1,5 @@
 name: build
+on: [pull_request, push]
 jobs:
   check:
     runs-on: ubuntu-latest
