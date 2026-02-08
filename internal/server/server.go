@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	urlpkg "net/url"
 	"strings"
@@ -192,7 +193,15 @@ func (s *Server) forwardAlert(logger *zap.Logger, payload *alertmanager.Payload,
 
 		tags = append(tags, tag.Tag)
 	}
-	tags = append(tags, convertLabelsToTags(alert.Labels)...)
+	labelTags, err := s.renderLabelsTemplate(alert)
+	if err != nil {
+		logger.Warn(
+			"Labels template rendering failed, falling back to default format",
+			zap.Error(err),
+		)
+		labelTags = convertLabelsToTags(alert.Labels)
+	}
+	tags = append(tags, labelTags...)
 
 	if title != "" {
 		req.Header.Set("X-Title", title)
@@ -232,7 +241,8 @@ func (s *Server) forwardAlert(logger *zap.Logger, payload *alertmanager.Payload,
 	defer res.Body.Close()
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return fmt.Errorf("http %d, %s", res.StatusCode, http.StatusText(res.StatusCode))
+		body, _ := io.ReadAll(io.LimitReader(res.Body, 1024))
+		return fmt.Errorf("http %d: %s", res.StatusCode, string(body))
 	}
 
 	return nil
@@ -271,4 +281,30 @@ func evalStringExpr(expr *config.StringExpression, alert *alertmanager.Alert, pa
 	}
 
 	return expr.Text, nil
+}
+
+func (s *Server) renderLabelsTemplate(alert *alertmanager.Alert) ([]string, error) {
+	if s.cfg.Ntfy.Notification.Templates.Labels == nil {
+		return convertLabelsToTags(alert.Labels), nil
+	}
+
+	var labelsBuf bytes.Buffer
+	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Labels).Execute(&labelsBuf, alert.Labels); err != nil {
+		return nil, fmt.Errorf("render labels template: %w", err)
+	}
+
+	renderedLabels := strings.TrimSpace(labelsBuf.String())
+	if renderedLabels == "" {
+		return []string{}, nil
+	}
+
+	var tags []string
+	for _, tag := range strings.Split(renderedLabels, tagSeparator) {
+		tag = strings.TrimSpace(tag)
+		if tag != "" {
+			tags = append(tags, tag)
+		}
+	}
+
+	return tags, nil
 }

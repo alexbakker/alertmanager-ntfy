@@ -33,10 +33,13 @@ notification properties based on the alert that the service is currently
 handling. For example, if an alert is resolved, you may want to show a different
 icon than when an alert is currently firing.
 
-The title and description of the notification can be customized using [Go's
-templating engine](https://pkg.go.dev/text/template). Refer to the definition of
-the ``Alert`` struct in [format.go](internal/alertmanager/format.go) for the
-data structure that is passed to the templates.
+The title, description, and labels of the notification can be customized using
+[Go's templating engine](https://pkg.go.dev/text/template). Refer to the
+definition of the ``Alert`` struct in [format.go](internal/alertmanager/format.go)
+for the data structure that is passed to the templates. The labels template also
+has access to additional functions: ``split``, ``join``, ``trim``, ``lower``,
+``upper``, ``capitalize``, ``contains``, ``hasPrefix``, ``hasSuffix``,
+``replace``, and ``printf``.
 
 ```yaml
 http:
@@ -71,6 +74,8 @@ ntfy:
         {{ if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
       description: |
         {{ index .Annotations "description" }}
+      labels: |
+        {{range $key, $value := .}}{{$key}} = {{$value}}, {{end}}
       headers:
         X-Click: |
           {{ .GeneratorURL }}
