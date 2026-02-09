@@ -30,6 +30,8 @@ ntfy:
         {{ if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
       description: |
         {{ index .Annotations "description" }}
+      labels: |
+        {{range $key, $value := .}}{{$key}} = {{$value}}, {{end}}
       headers:
         X-Click: |
           {{ .GeneratorURL }}
