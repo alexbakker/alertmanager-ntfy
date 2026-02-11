@@ -46,6 +46,15 @@ http:
     password: "verysecure"
 ntfy:
   baseurl: https://ntfy.sh
+  updateExistingNotification: true
+  # Only takes affect if updateExistingNotification is `true`
+  clearResolvedNotification: true
+  # Whether to delete the notification once the alert is resolved.
+  # This is mutually exclusive with clearResolvedNotification.
+  deleteResolvedNotification: false
+  # The delay before clearing a resolved notification.
+  # Must be between 10s and 24h.
+  clearDelay: 10s
   auth:
     basic:
       username: "admin"

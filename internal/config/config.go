@@ -61,11 +61,15 @@ type NtfyAuth struct {
 }
 
 type Ntfy struct {
-	BaseURL      string        `yaml:"baseurl"`
-	Timeout      time.Duration `yaml:"timeout"`
-	Auth         *NtfyAuth     `yaml:"auth"`
-	Notification Notification  `yaml:"notification"`
-	Async        bool          `yaml:"async"`
+	BaseURL                    string        `yaml:"baseurl"`
+	Timeout                    time.Duration `yaml:"timeout"`
+	Auth                       *NtfyAuth     `yaml:"auth"`
+	Notification               Notification  `yaml:"notification"`
+	Async                      bool          `yaml:"async"`
+	UpdateExistingNotification bool          `yaml:"updateExistingNotification"`
+	ClearResolvedNotification  bool          `yaml:"clearResolvedNotification"`
+	DeleteResolvedNotification bool          `yaml:"deleteResolvedNotification"`
+	ClearDelay                 time.Duration `yaml:"clearDelay"`
 }
 
 type HTTP struct {

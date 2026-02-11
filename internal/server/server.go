@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	urlpkg "net/url"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/alexbakker/alertmanager-ntfy/internal/alertmanager"
 	"github.com/alexbakker/alertmanager-ntfy/internal/config"
@@ -105,6 +107,15 @@ func (s *Server) handleWebhook(c *gin.Context) {
 	}
 	logger.Info("Handling webhook")
 
+	body, err := c.GetRawData()
+	if err != nil {
+		logger.Error("Failed to get raw request body", zap.Error(err))
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	logger.Debug("Received webhook request", zap.String("body", string(body)))
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+
 	var payload alertmanager.Data
 	if err := json.NewDecoder(c.Request.Body).Decode(&payload); err != nil {
 		logger.Error("Failed to unmarshal webhook payload", zap.Error(err))
@@ -146,6 +157,29 @@ func (s *Server) forwardAlerts(logger *zap.Logger, alerts []*alertmanager.Alert)
 }
 
 func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) error {
+	isResolved := alert.Status == "resolved"
+	isDelete := isResolved && s.cfg.Ntfy.DeleteResolvedNotification
+
+	// If delete is enabled, we skip the update and just delete
+	if isDelete {
+		return s.deleteNotification(logger, alert)
+	}
+
+	// Always update the notification first
+	if err := s.updateNotification(logger, alert); err != nil {
+		return fmt.Errorf("update notification: %w", err)
+	}
+
+	// If clear is enabled, clear after a delay
+	if isResolved && s.cfg.Ntfy.ClearResolvedNotification {
+		time.Sleep(s.cfg.Ntfy.ClearDelay)
+		return s.clearNotification(logger, alert)
+	}
+
+	return nil
+}
+
+func (s *Server) updateNotification(logger *zap.Logger, alert *alertmanager.Alert) error {
 	var titleBuf bytes.Buffer
 	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Title).Execute(&titleBuf, alert); err != nil {
 		return fmt.Errorf("render title template: %w", err)
@@ -308,11 +342,85 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		req.Header.Set(headerName, headerValue)
 	}
 
+	return s.sendNtfyRequest(logger, req, description)
+}
+
+func (s *Server) clearNotification(logger *zap.Logger, alert *alertmanager.Alert) error {
+	logger.Debug("Alert is resolved, clearing notification")
+
+	url, err := s.getUrl(alert)
+	if err != nil {
+		return err
+	}
+	url.Path += "/clear"
+
+	req, err := http.NewRequest("PUT", url.String(), nil)
+	if err != nil {
+		return fmt.Errorf("clear http request: %w", err)
+	}
+
+	if s.cfg.Ntfy.Auth != nil {
+		if s.cfg.Ntfy.Auth.BasicAuth.Valid() {
+			req.SetBasicAuth(s.cfg.Ntfy.Auth.BasicAuth.Username, s.cfg.Ntfy.Auth.BasicAuth.Password)
+		} else if s.cfg.Ntfy.Auth.Token != nil && *s.cfg.Ntfy.Auth.Token != "" {
+			req.Header.Add("Authorization", "Bearer "+*s.cfg.Ntfy.Auth.Token)
+		}
+	}
+
+	return s.sendNtfyRequest(logger, req, "")
+}
+
+func (s *Server) deleteNotification(logger *zap.Logger, alert *alertmanager.Alert) error {
+	logger.Debug("Alert is resolved, deleting notification")
+
+	url, err := s.getUrl(alert)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("DELETE", url.String(), nil)
+	if err != nil {
+		return fmt.Errorf("delete http request: %w", err)
+	}
+
+	if s.cfg.Ntfy.Auth != nil {
+		if s.cfg.Ntfy.Auth.BasicAuth.Valid() {
+			req.SetBasicAuth(s.cfg.Ntfy.Auth.BasicAuth.Username, s.cfg.Ntfy.Auth.BasicAuth.Password)
+		} else if s.cfg.Ntfy.Auth.Token != nil && *s.cfg.Ntfy.Auth.Token != "" {
+			req.Header.Add("Authorization", "Bearer "+*s.cfg.Ntfy.Auth.Token)
+		}
+	}
+
+	return s.sendNtfyRequest(logger, req, "")
+}
+
+func (s *Server) sendNtfyRequest(logger *zap.Logger, req *http.Request, description string) error {
+	headers := req.Header.Clone()
+	if headers.Get("Authorization") != "" {
+		headers.Set("Authorization", "<redacted>")
+	}
+
+	logFields := []zap.Field{
+		zap.String("method", req.Method),
+		zap.String("url", req.URL.String()),
+		zap.Any("headers", headers),
+	}
+	if req.Method == "POST" {
+		logFields = append(logFields, zap.String("body", description))
+	}
+	logger.Debug("Sending alert to ntfy", logFields...)
+
 	res, err := s.http.Do(req)
 	if err != nil {
 		return fmt.Errorf("http request: %w", err)
 	}
 	defer res.Body.Close()
+
+	bodyBytes, _ := io.ReadAll(res.Body)
+	logger.Debug("Received response from ntfy",
+		zap.Int("status_code", res.StatusCode),
+		zap.String("body", string(bodyBytes)),
+	)
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return fmt.Errorf("http %d, %s", res.StatusCode, http.StatusText(res.StatusCode))
@@ -340,7 +448,11 @@ func (s *Server) getUrl(alert *alertmanager.Alert) (*urlpkg.URL, error) {
 		return nil, errors.New("topic is empty")
 	}
 
-	url.Path, err = urlpkg.JoinPath(url.Path, topic)
+	if s.cfg.Ntfy.UpdateExistingNotification {
+		url.Path, err = urlpkg.JoinPath(url.Path, topic, alert.Fingerprint)
+	} else {
+		url.Path, err = urlpkg.JoinPath(url.Path, topic)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("url path join: %w", err)
 	}
