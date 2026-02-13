@@ -7,6 +7,9 @@ ntfy:
   baseurl: https://ntfy.sh
   # Updates the existing notification when an alert is resolved
   # instead of creating a new resolved notification
+  # Note: you can easily hit the ntfy rate limtis with this
+  # so its a good idea to set `visitor-request-limit-burst: 1000` in ntfy config
+  # change the number based on your notification volumes
   updateExistingNotification: true
   # Only takes affect if updateExistingNotification is `true`
   # Whether to clear the notification once the alert is resolved.
