@@ -172,8 +172,12 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 
 	// If clear is enabled, clear after a delay
 	if isResolved && s.cfg.Ntfy.ClearResolvedNotification {
-		time.Sleep(s.cfg.Ntfy.ClearDelay)
-		return s.clearNotification(logger, alert)
+		go func() {
+			time.Sleep(s.cfg.Ntfy.ClearDelay)
+			if err := s.clearNotification(logger, alert); err != nil {
+				logger.Error("Failed to clear notification", zap.Error(err))
+			}
+		}()
 	}
 
 	return nil
