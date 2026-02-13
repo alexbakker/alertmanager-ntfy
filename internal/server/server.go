@@ -68,6 +68,7 @@ func New(logger *zap.Logger, cfg *config.Config) *Server {
 			}
 			return []zapcore.Field{zap.String(keyRequestID, requestID.(string))}
 		}),
+		SkipPaths: []string{"/health"},
 	}))
 	e.Use(ginzap.RecoveryWithZap(logger, true))
 
