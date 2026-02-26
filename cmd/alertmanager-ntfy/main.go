@@ -29,11 +29,16 @@ var (
 			Addr: ":8000",
 		},
 		Ntfy: &config.Ntfy{
-			BaseURL: "https://ntfy.sh",
-			Timeout: 10 * time.Second,
+			BaseURL:                    "https://ntfy.sh",
+			Timeout:                    10 * time.Second,
+			UpdateExistingNotification: true,
+			ClearResolvedNotification:  true,
+			DeleteResolvedNotification: false,
+			ClearDelay:                 10 * time.Second,
 			Notification: config.Notification{
-				Topic:    config.StringExpression{Text: getDefaultTopic()},
-				Priority: &config.StringExpression{Text: "default"},
+				Topic:               config.StringExpression{Text: getDefaultTopic()},
+				Priority:            &config.StringExpression{Text: "default"},
+				ConvertLabelsToTags: true,
 			},
 		},
 		Log: getDefaultLogConfig(zapcore.InfoLevel),
@@ -57,6 +62,9 @@ func main() {
 	f.String("ntfy-topic", defaultConfig.Ntfy.Notification.Topic.Text, "the ntfy topic")
 	f.String("ntfy-priority", defaultConfig.Ntfy.Notification.Priority.Text, "the ntfy priority")
 	f.Duration("ntfy-timeout", defaultConfig.Ntfy.Timeout, "the ntfy request timeout")
+	f.Duration("ntfy-cleardelay", defaultConfig.Ntfy.ClearDelay, "the delay before clearing a resolved notification")
+	f.Bool("ntfy-clearresolved", defaultConfig.Ntfy.ClearResolvedNotification, "whether to clear the notification once the alert is resolved")
+	f.Bool("ntfy-deleteresolved", defaultConfig.Ntfy.DeleteResolvedNotification, "whether to delete the notification once the alert is resolved")
 	if err := f.Parse(os.Args[1:]); err != nil {
 		exitWithError(err.Error())
 	}
@@ -82,6 +90,14 @@ func main() {
 	var cfg config.Config
 	if err := k.UnmarshalWithConf("", &cfg, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
 		exitWithError(fmt.Sprintf("Failed to parse config file: %v", err))
+	}
+
+	if cfg.Ntfy.ClearResolvedNotification && cfg.Ntfy.DeleteResolvedNotification {
+		exitWithError("ntfy.clearResolvedNotification and ntfy.deleteResolvedNotification cannot be enabled at the same time")
+	}
+
+	if cfg.Ntfy.ClearDelay < 10*time.Second || cfg.Ntfy.ClearDelay > 24*time.Hour {
+		exitWithError("ntfy.clearDelay must be between 10s and 24h")
 	}
 
 	logger, err := newLogger(cfg.Log)

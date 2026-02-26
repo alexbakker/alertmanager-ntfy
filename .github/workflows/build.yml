@@ -1,5 +1,11 @@
 name: build
-on: [pull_request, push]
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*.*.*"
+  pull_request: {}
 jobs:
   check:
     runs-on: ubuntu-latest

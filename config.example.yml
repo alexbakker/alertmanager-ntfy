@@ -5,6 +5,21 @@ http:
     password: "verysecure"
 ntfy:
   baseurl: https://ntfy.sh
+  # Updates the existing notification when an alert is resolved
+  # instead of creating a new resolved notification
+  # Note: you can easily hit the ntfy rate limtis with this
+  # so its a good idea to set `visitor-request-limit-burst: 1000` in ntfy config
+  # change the number based on your notification volumes
+  updateExistingNotification: true
+  # Only takes affect if updateExistingNotification is `true`
+  # Whether to clear the notification once the alert is resolved.
+  clearResolvedNotification: true
+  # The delay between updating a notification to resolved and clearing it.
+  # Must be between 10s and 24h.
+  clearDelay: 10s
+  # Whether to delete the notification once the alert is resolved.
+  # This is mutually exclusive with clearResolvedNotification.
+  deleteResolvedNotification: false
   auth:
     basic:
       username: "admin"
@@ -14,6 +29,8 @@ ntfy:
   notification:
     # The topic can either be a hardcoded string or a gval expression that evaluates to a string
     topic: alertmanager
+    # true to send all labels as tags, false to only send labels that are explicitly defined in the tags section
+    convertLabelsToTags: true
     # Priority reference: https://docs.ntfy.sh/publish/#message-priority
     # Can either be a hardcoded string or a gval expression that evaluates to a string
     priority: |
@@ -30,6 +47,16 @@ ntfy:
         {{ if eq .Status "resolved" }}Resolved: {{ end }}{{ index .Annotations "summary" }}
       description: |
         {{ index .Annotations "description" }}
+      # Add ntfy actions https://docs.ntfy.sh/publish/?h=action#open-websiteapp
+      actions: 
+        - action: "view"
+          label: "Dashboard"
+          url: "{{ .GeneratorURL }}"
+          condition: 'GeneratorURL != ""'
+        - action: "view"
+          label: "Runbook"
+          url: '{{ index .Annotations "runbook_url" }}'
+          condition: 'status == "firing" &&  annotations["runbook_url"] != ""' 
       headers:
         X-Click: |
           {{ .GeneratorURL }}
