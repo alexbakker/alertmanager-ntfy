@@ -31,6 +31,11 @@ type Alert struct {
 }
 
 func (a *Alert) Map() map[string]interface{} {
+	// Ensure annotations is initialized to prevent nil map access
+	if a.Annotations == nil {
+		a.Annotations = make(map[string]string)
+	}
+
 	s := structs.New(a)
 	s.TagName = "json"
 	return s.Map()
