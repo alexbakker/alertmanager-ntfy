@@ -72,7 +72,7 @@ func main() {
 	}
 
 	if configFiles == nil || len(*configFiles) == 0 {
-		exitWithError("Empty --config flag")
+		exitWithError("Empty --configs flag")
 	}
 
 	if err := k.Load(structs.Provider(&defaultConfig, "yaml"), nil); err != nil {
