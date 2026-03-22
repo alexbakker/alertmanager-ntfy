@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	urlpkg "net/url"
 	"os"
 	"strings"
 	"time"
@@ -52,13 +54,21 @@ func main() {
 
 	configFiles := f.StringSlice("configs", []string{"config.yml"}, "the yaml configuration files to load and merge")
 	f.String("log-level", defaultConfig.Log.Level.String(), "the log level to use")
-	f.String("http-addr", defaultConfig.HTTP.Addr, "the address to have the HTTP server listen on")
+	httpAddr := f.String("http-addr", defaultConfig.HTTP.Addr, "the address to have the HTTP server listen on")
 	f.String("ntfy-baseurl", defaultConfig.Ntfy.BaseURL, "the ntfy url to forward alerts to")
 	f.String("ntfy-topic", defaultConfig.Ntfy.Notification.Topic.Text, "the ntfy topic")
 	f.String("ntfy-priority", defaultConfig.Ntfy.Notification.Priority.Text, "the ntfy priority")
 	f.Duration("ntfy-timeout", defaultConfig.Ntfy.Timeout, "the ntfy request timeout")
+	healthCheck := f.Bool("health-check", false, "perform health check and exit")
 	if err := f.Parse(os.Args[1:]); err != nil {
 		exitWithError(err.Error())
+	}
+
+	if *healthCheck {
+		if err := checkHealth(*httpAddr); err != nil {
+			exitWithError(fmt.Sprintf("Health check failed: %v", err))
+			return
+		}
 	}
 
 	if configFiles == nil || len(*configFiles) == 0 {
@@ -102,4 +112,20 @@ func exitWithError(msg string) {
 
 func convertFlag(key string, value string) (string, interface{}) {
 	return strings.ReplaceAll(key, "-", "."), value
+}
+
+func checkHealth(addr string) error {
+	url := &urlpkg.URL{Scheme: "http", Host: addr, Path: "/health"}
+
+	resp, err := http.Get(url.String())
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("status code: %d", resp.StatusCode)
+	}
+
+	return nil
 }
