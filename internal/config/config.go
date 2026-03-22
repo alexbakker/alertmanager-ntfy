@@ -6,16 +6,42 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/PaesslerAG/gval"
 	"go.uber.org/zap"
 )
+
+// capitalize returns a string with the first character uppercased.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r, size := utf8.DecodeRuneInString(s)
+	return string(unicode.ToUpper(r)) + s[size:]
+}
 
 var (
 	exprLang = gval.Full()
 
 	// Source: https://github.com/binwiederhier/ntfy/blob/30301c8a7ff9e54ae505daf73a7f1571e7fefae3/user/types.go#L245
 	allowedTopicRegex = regexp.MustCompile(`^[-_A-Za-z0-9]{1,64}$`)
+
+	// TemplateFuncs contains custom functions available in templates.
+	TemplateFuncs = template.FuncMap{
+		"split":      strings.Split,
+		"join":       strings.Join,
+		"trim":       strings.TrimSpace,
+		"lower":      strings.ToLower,
+		"upper":      strings.ToUpper,
+		"capitalize": capitalize,
+		"contains":   strings.Contains,
+		"hasPrefix":  strings.HasPrefix,
+		"hasSuffix":  strings.HasSuffix,
+		"replace":    func(old, new, s string) string { return strings.ReplaceAll(s, old, new) },
+		"printf":     fmt.Sprintf,
+	}
 )
 
 type Template template.Template
@@ -28,7 +54,8 @@ type Expression struct {
 type Templates struct {
 	Title       *Template            `yaml:"title"`
 	Description *Template            `yaml:"description"`
-	Headers     map[string]*Template `yaml:headers`
+	Labels      *Template            `yaml:"labels"`
+	Headers     map[string]*Template `yaml:"headers"`
 }
 
 type Tag struct {
@@ -81,7 +108,7 @@ type Config struct {
 func (t *Template) UnmarshalText(text []byte) error {
 	s := strings.TrimSpace(string(text))
 
-	tmpl, err := template.New("").Parse(s)
+	tmpl, err := template.New("").Funcs(TemplateFuncs).Parse(s)
 	if err != nil {
 		return err
 	}
