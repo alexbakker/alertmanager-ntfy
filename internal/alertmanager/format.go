@@ -8,7 +8,7 @@ import (
 
 // Source: https://github.com/prometheus/alertmanager/blob/ba8da18fb2b769ace00d270d677980c4d57310e7/template/template.go
 
-type Data struct {
+type Payload struct {
 	Receiver string   `json:"receiver"`
 	Status   string   `json:"status"`
 	Alerts   []*Alert `json:"alerts"`
@@ -32,6 +32,12 @@ type Alert struct {
 
 func (a *Alert) Map() map[string]interface{} {
 	s := structs.New(a)
+	s.TagName = "json"
+	return s.Map()
+}
+
+func (d *Payload) Map() map[string]interface{} {
+	s := structs.New(d)
 	s.TagName = "json"
 	return s.Map()
 }

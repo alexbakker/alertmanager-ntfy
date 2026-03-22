@@ -5,11 +5,30 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+
+	"github.com/alexbakker/alertmanager-ntfy/internal/alertmanager"
 )
 
 const (
 	tagSeparator = ","
 )
+
+// templateContext is the data passed to notification templates. It contains
+// the individual alert as well as the parent webhook payload.
+type templateContext struct {
+	*alertmanager.Alert
+	Payload *alertmanager.Payload
+}
+
+// exprMap builds a map for gval expression evaluation. Alert fields are
+// available at the top level for backwards compatibility, as well as under the
+// "alert" key. The parent webhook payload is available under "payload".
+func exprMap(alert *alertmanager.Alert, payload *alertmanager.Payload) map[string]interface{} {
+	m := alert.Map()
+	m["alert"] = alert.Map()
+	m["payload"] = payload.Map()
+	return m
+}
 
 func convertLabelsToTags(labels map[string]string) []string {
 	var tags []string

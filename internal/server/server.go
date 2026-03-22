@@ -91,7 +91,7 @@ func (s *Server) handleWebhook(c *gin.Context) {
 	}
 	logger.Info("Handling webhook")
 
-	var payload alertmanager.Data
+	var payload alertmanager.Payload
 	if err := json.NewDecoder(c.Request.Body).Decode(&payload); err != nil {
 		logger.Error("Failed to unmarshal webhook payload", zap.Error(err))
 		c.Status(http.StatusBadRequest)
@@ -105,7 +105,7 @@ func (s *Server) handleWebhook(c *gin.Context) {
 	}
 
 	if !s.cfg.Ntfy.Async {
-		if s.forwardAlerts(logger, payload.Alerts) {
+		if s.forwardAlerts(logger, &payload) {
 			c.Status(http.StatusOK)
 		} else {
 			c.Status(http.StatusBadGateway)
@@ -113,15 +113,15 @@ func (s *Server) handleWebhook(c *gin.Context) {
 		return
 	}
 
-	go s.forwardAlerts(logger, payload.Alerts)
+	go s.forwardAlerts(logger, &payload)
 	c.Status(http.StatusAccepted)
 }
 
-func (s *Server) forwardAlerts(logger *zap.Logger, alerts []*alertmanager.Alert) bool {
+func (s *Server) forwardAlerts(logger *zap.Logger, payload *alertmanager.Payload) bool {
 	success := true
-	for _, alert := range alerts {
+	for _, alert := range payload.Alerts {
 		logger := logger.With(zap.String("alert_fingerprint", alert.Fingerprint))
-		if err := s.forwardAlert(logger, alert); err != nil {
+		if err := s.forwardAlert(logger, payload, alert); err != nil {
 			logger.Error("Failed to forward alert to ntfy", zap.Error(err))
 			success = false
 		} else {
@@ -131,15 +131,17 @@ func (s *Server) forwardAlerts(logger *zap.Logger, alerts []*alertmanager.Alert)
 	return success
 }
 
-func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) error {
+func (s *Server) forwardAlert(logger *zap.Logger, payload *alertmanager.Payload, alert *alertmanager.Alert) error {
+	tmplCtx := templateContext{Alert: alert, Payload: payload}
+
 	var titleBuf bytes.Buffer
-	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Title).Execute(&titleBuf, alert); err != nil {
+	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Title).Execute(&titleBuf, &tmplCtx); err != nil {
 		return fmt.Errorf("render title template: %w", err)
 	}
 	title := strings.TrimSpace(titleBuf.String())
 
 	var descBuf bytes.Buffer
-	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Description).Execute(&descBuf, alert); err != nil {
+	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Description).Execute(&descBuf, &tmplCtx); err != nil {
 		return fmt.Errorf("render description template: %w", err)
 	}
 	description := strings.TrimSpace(descBuf.String())
@@ -151,7 +153,7 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		title = ""
 	}
 
-	url, err := s.getUrl(alert)
+	url, err := s.getUrl(alert, payload)
 	if err != nil {
 		return err
 	}
@@ -172,7 +174,7 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 	var tags []string
 	for _, tag := range s.cfg.Ntfy.Notification.Tags {
 		if tag.Condition != nil {
-			match, err := tag.Condition.Evaluable.EvalBool(context.Background(), alert.Map())
+			match, err := tag.Condition.Evaluable.EvalBool(context.Background(), exprMap(alert, payload))
 			if err != nil {
 				// Expression evaluation errors should not prevent the notification from being sent
 				logger.Warn(
@@ -199,7 +201,7 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 		req.Header.Set("X-Tags", strings.Join(tags, tagSeparator))
 	}
 	if s.cfg.Ntfy.Notification.Priority != nil {
-		priority, err := evalStringExpr(s.cfg.Ntfy.Notification.Priority, alert)
+		priority, err := evalStringExpr(s.cfg.Ntfy.Notification.Priority, alert, payload)
 		if err != nil {
 			// Expression evaluation errors should not prevent the notification from being sent
 			logger.Warn(
@@ -215,7 +217,7 @@ func (s *Server) forwardAlert(logger *zap.Logger, alert *alertmanager.Alert) err
 	}
 	for headerName, headerTemplate := range s.cfg.Ntfy.Notification.Templates.Headers {
 		var headerBuf bytes.Buffer
-		if err := (*template.Template)(headerTemplate).Execute(&headerBuf, alert); err != nil {
+		if err := (*template.Template)(headerTemplate).Execute(&headerBuf, &tmplCtx); err != nil {
 			return fmt.Errorf("render header %s template: %w", headerName, err)
 		}
 		headerValue := strings.ReplaceAll(strings.TrimSpace(headerBuf.String()), "\n", "")
@@ -240,13 +242,13 @@ func (s *Server) Run(addr string) error {
 	return s.e.Run(addr)
 }
 
-func (s *Server) getUrl(alert *alertmanager.Alert) (*urlpkg.URL, error) {
+func (s *Server) getUrl(alert *alertmanager.Alert, payload *alertmanager.Payload) (*urlpkg.URL, error) {
 	url, err := urlpkg.Parse(s.cfg.Ntfy.BaseURL)
 	if err != nil {
 		return nil, err
 	}
 
-	topic, err := evalStringExpr(&s.cfg.Ntfy.Notification.Topic, alert)
+	topic, err := evalStringExpr(&s.cfg.Ntfy.Notification.Topic, alert, payload)
 	if err != nil {
 		return nil, fmt.Errorf("topic expression eval: %w", err)
 	}
@@ -263,9 +265,9 @@ func (s *Server) getUrl(alert *alertmanager.Alert) (*urlpkg.URL, error) {
 	return url, nil
 }
 
-func evalStringExpr(expr *config.StringExpression, alert *alertmanager.Alert) (string, error) {
+func evalStringExpr(expr *config.StringExpression, alert *alertmanager.Alert, payload *alertmanager.Payload) (string, error) {
 	if expr.Expression != nil {
-		return expr.Expression.Evaluable.EvalString(context.Background(), alert.Map())
+		return expr.Expression.Evaluable.EvalString(context.Background(), exprMap(alert, payload))
 	}
 
 	return expr.Text, nil
