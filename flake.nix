@@ -17,7 +17,7 @@
           name = "alertmanager-ntfy";
           src = self;
 
-          vendorHash = "sha256-1M0H/d6aBA8sKhVp8U9VL7mb09+q1sMdoCI2eg9/F9U=";
+          vendorHash = "sha256-++jIi53fckPkU4ZVgR2DkSfHZlA39w5jx4TfAlcsKIM=";
         };
       };
       devShells.default = with pkgs; mkShell {
