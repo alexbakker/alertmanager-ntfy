@@ -34,8 +34,9 @@ var (
 			BaseURL: "https://ntfy.sh",
 			Timeout: 10 * time.Second,
 			Notification: config.Notification{
-				Topic:    config.StringExpression{Text: getDefaultTopic()},
-				Priority: &config.StringExpression{Text: "default"},
+				Topic:               config.StringExpression{Text: getDefaultTopic()},
+				Priority:            &config.StringExpression{Text: "default"},
+				ConvertLabelsToTags: true,
 			},
 		},
 		Log: getDefaultLogConfig(zapcore.InfoLevel),
