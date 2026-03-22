@@ -28,7 +28,7 @@ type Expression struct {
 type Templates struct {
 	Title       *Template            `yaml:"title"`
 	Description *Template            `yaml:"description"`
-	Headers     map[string]*Template `yaml:headers`
+	Headers     map[string]*Template `yaml:"headers"`
 }
 
 type Tag struct {
