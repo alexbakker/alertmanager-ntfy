@@ -67,8 +67,8 @@ func main() {
 	if *healthCheck {
 		if err := checkHealth(*httpAddr); err != nil {
 			exitWithError(fmt.Sprintf("Health check failed: %v", err))
-			return
 		}
+		return
 	}
 
 	if configFiles == nil || len(*configFiles) == 0 {
