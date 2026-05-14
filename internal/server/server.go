@@ -242,6 +242,16 @@ func (s *Server) forwardAlert(logger *zap.Logger, payload *alertmanager.Payload,
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(res.Body, 1024))
+
+		logger.Error(
+			"ntfy returned non-2xx response",
+			zap.Int("status", res.StatusCode),
+			zap.String("response_body", string(body)),
+			zap.String("url", req.URL.String()),
+			zap.Any("headers", req.Header),
+			zap.String("body", description),
+		)
+
 		return fmt.Errorf("http %d: %s", res.StatusCode, string(body))
 	}
 
