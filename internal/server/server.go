@@ -193,7 +193,7 @@ func (s *Server) forwardAlert(logger *zap.Logger, payload *alertmanager.Payload,
 
 		tags = append(tags, tag.Tag)
 	}
-	labelTags, err := s.renderLabelsTemplate(alert)
+	labelTags, err := s.renderLabelsTemplate(&tmplCtx)
 	if err != nil {
 		logger.Warn(
 			"Labels template rendering failed, falling back to default format",
@@ -293,13 +293,13 @@ func evalStringExpr(expr *config.StringExpression, alert *alertmanager.Alert, pa
 	return expr.Text, nil
 }
 
-func (s *Server) renderLabelsTemplate(alert *alertmanager.Alert) ([]string, error) {
+func (s *Server) renderLabelsTemplate(ctx *templateContext) ([]string, error) {
 	if s.cfg.Ntfy.Notification.Templates.Labels == nil {
-		return convertLabelsToTags(alert.Labels), nil
+		return convertLabelsToTags(ctx.Labels), nil
 	}
 
 	var labelsBuf bytes.Buffer
-	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Labels).Execute(&labelsBuf, alert.Labels); err != nil {
+	if err := (*template.Template)(s.cfg.Ntfy.Notification.Templates.Labels).Execute(&labelsBuf, ctx); err != nil {
 		return nil, fmt.Errorf("render labels template: %w", err)
 	}
 

@@ -14,6 +14,7 @@ func TestRenderLabelsTemplate(t *testing.T) {
 		name         string
 		templateStr  string
 		labels       map[string]string
+		status       string
 		expectedTags []string
 	}{
 		{
@@ -30,21 +31,42 @@ func TestRenderLabelsTemplate(t *testing.T) {
 		},
 		{
 			name:         "custom format",
-			templateStr:  "{{range $key, $value := .}}{{$key}}: {{$value}}, {{end}}",
+			templateStr:  "{{range $key, $value := .Labels}}{{$key}}: {{$value}}, {{end}}",
 			labels:       map[string]string{"severity": "critical"},
 			expectedTags: []string{"severity: critical"},
 		},
 		{
 			name:         "filter labels",
-			templateStr:  "{{range $key, $value := .}}{{if ne $key \"internal\"}}{{$key}}={{$value}}, {{end}}{{end}}",
+			templateStr:  "{{range $key, $value := .Labels}}{{if ne $key \"internal\"}}{{$key}}={{$value}}, {{end}}{{end}}",
 			labels:       map[string]string{"severity": "critical", "internal": "debug"},
 			expectedTags: []string{"severity=critical"},
 		},
 		{
 			name:         "capitalize function",
-			templateStr:  "{{range $key, $value := .}}{{ capitalize $value }}, {{end}}",
+			templateStr:  "{{range $key, $value := .Labels}}{{ capitalize $value }}, {{end}}",
 			labels:       map[string]string{"env": "production"},
 			expectedTags: []string{"Production"},
+		},
+		{
+			name:        "firing alert with emoji label uses emoji label value",
+			templateStr: "{{- if eq .Status \"firing\" -}}{{- with index .Labels \"emoji\" -}}{{ . }}{{- else -}}rotating_light{{- end -}}{{- else -}}white_check_mark{{- end -}}",
+			labels:      map[string]string{"emoji": "blue_car", "severity": "info"},
+			status:      "firing",
+			expectedTags: []string{"blue_car"},
+		},
+		{
+			name:        "firing alert without emoji label falls back to rotating_light",
+			templateStr: "{{- if eq .Status \"firing\" -}}{{- with index .Labels \"emoji\" -}}{{ . }}{{- else -}}rotating_light{{- end -}}{{- else -}}white_check_mark{{- end -}}",
+			labels:      map[string]string{"severity": "warning"},
+			status:      "firing",
+			expectedTags: []string{"rotating_light"},
+		},
+		{
+			name:        "resolved alert emits white_check_mark",
+			templateStr: "{{- if eq .Status \"firing\" -}}{{- with index .Labels \"emoji\" -}}{{ . }}{{- else -}}rotating_light{{- end -}}{{- else -}}white_check_mark{{- end -}}",
+			labels:      map[string]string{"severity": "info"},
+			status:      "resolved",
+			expectedTags: []string{"white_check_mark"},
 		},
 	}
 
@@ -67,9 +89,10 @@ func TestRenderLabelsTemplate(t *testing.T) {
 			}
 
 			server := &Server{cfg: cfg}
-			alert := &alertmanager.Alert{Labels: tt.labels}
+			alert := &alertmanager.Alert{Labels: tt.labels, Status: tt.status}
+			ctx := &templateContext{Alert: alert}
 
-			tags, err := server.renderLabelsTemplate(alert)
+			tags, err := server.renderLabelsTemplate(ctx)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}

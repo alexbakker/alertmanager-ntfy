@@ -31,7 +31,7 @@ ntfy:
       description: |
         {{ index .Annotations "description" }}
       labels: |
-        {{range $key, $value := .}}{{$key}} = {{$value}}, {{end}}
+        {{range $key, $value := .Labels}}{{$key}} = {{$value}}, {{end}}
       headers:
         X-Click: |
           {{ .GeneratorURL }}
