@@ -24,7 +24,7 @@ There are a couple of ways to install alertmanager-ntfy:
 ## Configuration
 
 The primary way to configure the service is through a YAML configuration file.
-An example configuration is availabe in [config.example.yml](config.example.yml).
+An example configuration is available in [config.example.yml](config.example.yml).
 
 Some of the ntfy notification options also accept a
 [gval](https://github.com/PaesslerAG/gval) expression, rather than just a

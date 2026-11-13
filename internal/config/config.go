@@ -11,6 +11,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	HealthPath = "/health"
+)
+
 var (
 	exprLang = gval.Full()
 
