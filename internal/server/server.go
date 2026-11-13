@@ -45,6 +45,9 @@ func New(logger *zap.Logger, cfg *config.Config) *Server {
 		c.Next()
 	})
 	e.Use(ginzap.GinzapWithConfig(logger, &ginzap.Config{
+		Skipper: func(c *gin.Context) bool {
+			return c.Request.URL.Path == "/health" && c.Request.Method == "GET" && len(c.Errors) == 0
+		},
 		Context: ginzap.Fn(func(c *gin.Context) []zapcore.Field {
 			requestID, ok := c.Get("request_id")
 			if !ok {
