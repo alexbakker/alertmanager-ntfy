@@ -115,7 +115,7 @@ func convertFlag(key string, value string) (string, interface{}) {
 }
 
 func checkHealth(addr string) error {
-	url := &urlpkg.URL{Scheme: "http", Host: addr, Path: "/health"}
+	url := &urlpkg.URL{Scheme: "http", Host: addr, Path: config.HealthPath}
 
 	resp, err := http.Get(url.String())
 	if err != nil {

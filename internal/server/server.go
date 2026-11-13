@@ -69,7 +69,7 @@ func New(logger *zap.Logger, cfg *config.Config) *Server {
 		s.e.POST("/hook", s.handleWebhook)
 	}
 
-	s.e.GET("/health", s.handleHealthCheck)
+	s.e.GET(config.HealthPath, s.handleHealthCheck)
 	return &s
 }
 
