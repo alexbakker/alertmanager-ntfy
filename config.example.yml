@@ -33,6 +33,9 @@ ntfy:
       headers:
         X-Click: |
           {{ .GeneratorURL }}
+    # Delete the notification of an alert once it resolves, instead of sending a
+    # new one. Requires ntfy v2.15.0 or newer.
+    delete_resolved: false
   # Whether to forward alerts asynchronously. When enabled, a 202 status code is
   # returned immediately. When disabled, forwarding errors result in a 5xx status
   # code.

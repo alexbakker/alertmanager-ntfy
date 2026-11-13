@@ -51,6 +51,8 @@ type Notification struct {
 	Priority  *StringExpression `yaml:"priority"`
 	Tags      []*Tag            `yaml:"tags"`
 	Templates *Templates        `yaml:"templates"`
+	// Delete the notification of an alert once it resolves
+	DeleteResolved bool `yaml:"delete_resolved"`
 }
 
 type NtfyAuth struct {

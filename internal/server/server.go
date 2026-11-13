@@ -158,7 +158,14 @@ func (s *Server) forwardAlert(logger *zap.Logger, payload *alertmanager.Payload,
 		return err
 	}
 
-	req, err := http.NewRequest("POST", url.String(), strings.NewReader(description))
+	method := "POST"
+	if s.cfg.Ntfy.Notification.DeleteResolved && alert.Status == "resolved" {
+		// Delete the notification that was sent with the fingerprint as sequence ID
+		method = "DELETE"
+		url = url.JoinPath(alert.Fingerprint)
+	}
+
+	req, err := http.NewRequest(method, url.String(), strings.NewReader(description))
 	if err != nil {
 		return fmt.Errorf("http request: %w", err)
 	}
@@ -214,6 +221,9 @@ func (s *Server) forwardAlert(logger *zap.Logger, payload *alertmanager.Payload,
 		if priority != "" {
 			req.Header.Set("X-Priority", priority)
 		}
+	}
+	if s.cfg.Ntfy.Notification.DeleteResolved {
+		req.Header.Set("X-Sequence-ID", alert.Fingerprint)
 	}
 	for headerName, headerTemplate := range s.cfg.Ntfy.Notification.Templates.Headers {
 		var headerBuf bytes.Buffer
