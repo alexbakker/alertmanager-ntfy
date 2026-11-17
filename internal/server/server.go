@@ -225,6 +225,19 @@ func (s *Server) forwardAlert(logger *zap.Logger, payload *alertmanager.Payload,
 		req.Header.Set(headerName, headerValue)
 	}
 
+	if logger.Core().Enabled(zap.DebugLevel) {
+		headers := req.Header.Clone()
+		if headers.Get("Authorization") != "" {
+			headers.Set("Authorization", "REDACTED")
+		}
+		logger.Debug("Outgoing ntfy HTTP request",
+			zap.String("method", req.Method),
+			zap.String("url", req.URL.String()),
+			zap.Any("headers", headers),
+			zap.String("body", description),
+		)
+	}
+
 	res, err := s.http.Do(req)
 	if err != nil {
 		return fmt.Errorf("http request: %w", err)

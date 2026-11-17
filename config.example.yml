@@ -37,3 +37,5 @@ ntfy:
   # returned immediately. When disabled, forwarding errors result in a 5xx status
   # code.
   async: false
+log:
+  level: info
